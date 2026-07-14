@@ -1,0 +1,18 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# OpenSSL is required by Prisma's query engine on Alpine.
+RUN apk add --no-cache openssl
+
+COPY package.json yarn.lock* ./
+RUN yarn install --frozen-lockfile || yarn install
+
+COPY prisma ./prisma
+RUN npx prisma generate
+
+COPY . .
+
+EXPOSE 3000
+
+CMD ["yarn", "start:dev"]

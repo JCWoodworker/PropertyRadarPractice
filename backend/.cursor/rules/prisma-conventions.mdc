@@ -1,0 +1,20 @@
+---
+description: Prisma schema and migration conventions for the backend
+globs: prisma/**/*
+alwaysApply: false
+---
+
+# Prisma conventions — backend
+
+- Schema is the source of truth. Change `schema.prisma` first, then
+  generate a migration — never hand-edit production DB outside migrations.
+- Map table/column names with `@@map` / `@map` (snake_case in Postgres,
+  camelCase in TypeScript).
+- Prefer validated strings over Postgres enums when the frontend already
+  owns a string-literal union (see `Lead.stage`).
+- Seed scripts must be **idempotent** (skip or upsert; never blindly
+  duplicate on every `docker compose up`).
+- `tenantId` is a nullable placeholder — do not enforce or filter on it
+  until auth lands.
+- Keep domain tables owned by one module conceptually (`leads` vs
+  `property_lookup_cache`); don't add FKs that couple the two domains.

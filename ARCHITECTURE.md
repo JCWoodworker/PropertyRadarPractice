@@ -16,8 +16,11 @@ that crosses an iframe boundary. `packages/sdk` defines a strict JSON-RPC 2.0
 protocol on top of `postMessage` and wraps the host's side of it in a class
 (`ParcelIQWidget`) so the CRM never touches `postMessage` directly. Both apps
 also import `packages/ui`, a shared component library, so they stay visually
-consistent even though they're two separate deployables. That's the whole
-system.
+consistent even though they're two separate deployables. Persistence and
+geocoding go through a NestJS + Postgres backend that co-locates two siloed
+domain modules (Leads for the CRM, Properties for the widget) in one process
+for the POC — treated as separate backends that share infra only. That's the
+whole system.
 
 ## Repo layout
 
@@ -26,17 +29,19 @@ system.
 ├── packages/
 │   ├── sdk/     @parceliq/embed-sdk — the protocol + the ParcelIQWidget class
 │   └── ui/      @parceliq/ui        — shared shadcn/Radix/Tailwind components
+├── backend/      NestJS + Prisma     — LeadsModule (CRM) + PropertiesModule (widget)
 ├── host-site/    RoofingFlow CRM     — the "host" app (:5173)
-└── iframe-app/   ParcelIQ widget     — the embedded app (:5174)
+├── iframe-app/   ParcelIQ widget     — the embedded app (:5174)
+└── docker-compose.yml                — Postgres + backend (:3000)
 ```
 
 `host-site` and `iframe-app` both depend on `packages/ui`. Only `host-site`
 depends on `packages/sdk` at runtime — `iframe-app` only imports *types* from
 it (see "Why `iframe-app` doesn't really depend on the SDK" below). This is a
-Yarn workspaces monorepo; all four packages share one `node_modules` at the
-repo root, and Vite consumes the two `packages/*` directly as TypeScript
-source (no build step) — the same idea as a real published npm package,
-minus the publish step.
+Yarn workspaces monorepo; packages share one `node_modules` at the repo root,
+and Vite consumes the two `packages/*` directly as TypeScript source (no build
+step). Postgres and the Nest backend run in Docker; the two Vite apps stay
+native for HMR.
 
 ---
 
@@ -382,8 +387,8 @@ In `App.tsx`, the three RPC method handlers are:
 
 `src/hooks/use-property.ts` wraps `useQuery` and returns a flat shape:
 `{ property, isLoading, isEmpty, isError, isOffline, error, refetch }`.
-`isEmpty` means Nominatim genuinely found nothing (a successful query with a
-`null` result) — different from `isError`. `isOffline` is the interesting
+`isEmpty` means the backend returned `null` (a successful query with no
+geocode match) — different from `isError`. `isOffline` is the interesting
 one: `query.isError && query.data !== undefined` — meaning the most recent
 fetch failed, *but* there's still a previously-successful value sitting in
 the cache for this exact query key (either from earlier in the session, or
@@ -391,13 +396,13 @@ rehydrated from `localStorage` on load). When that's true, `App.tsx` renders
 the stale `property` anyway, with an `OfflineBanner` layered on top instead
 of a bare error screen.
 
-`src/lib/geocode.ts`'s `fetchProperty(address)` calls OpenStreetMap's free
-Nominatim API and maps its response into our own `PropertyResult` shape
-(address, county, state, lat/lon, place type). Worth knowing: browsers
-forbid overriding the `User-Agent` header from `fetch`, so this can't fully
-follow Nominatim's usage-policy ask for a descriptive UA — fine for a local
-demo's light traffic, but a real product would proxy this through its own
-backend.
+`src/lib/geocode.ts`'s `fetchProperty(address)` calls the Nest backend's
+`GET /properties?address=...` (the Properties module), not Nominatim
+directly. That module owns a Postgres cache-through proxy with a real
+`User-Agent` — something browsers forbid on `fetch`. Deliberate POC
+simplification: a real ParcelIQ vendor would run this API on its own
+infrastructure; here it shares a Nest process with the CRM's Leads module
+but must not import or touch CRM tables (see § Backend domain siloing).
 
 ### The watchlist feature
 
@@ -443,20 +448,30 @@ anything to create the loop.
 
 ## 4. `host-site` — RoofingFlow CRM
 
-### Data layer — the mock leads "API"
+### Data layer — leads via the Nest CRM module
 
-`src/lib/leads-store.ts` is an in-memory array of seed leads (roofing-
-specific fields: stage, roof age, roof material, last inspection, a
-distress flag/reason) behind an artificial `setTimeout` delay (skipped
-under Vitest via `import.meta.env.MODE === 'test'`), so the hooks layer has
-real loading states to exercise instead of resolving synchronously. Exposes
-`listLeads`, `addLead`, `deleteLead`, `flagLeadByAddress`, `updateLeadStage`,
-and a test-only `__resetLeadsForTests()`.
+`src/lib/leads-store.ts` is a thin `fetch` client against the Nest
+**Leads** module:
 
-`src/hooks/use-leads.ts` wraps all of that in the same flat hook shape used
-everywhere in this repo: `useLeads()` for reads, and `useAddLead`/
-`useDeleteLead`/`useFlagLead`/`useUpdateLeadStage` as mutations that each
-invalidate the `['leads']` query key on success.
+- `GET /leads?page=&limit=` → `{ data, page, limit, total, totalPages }`
+- `POST /leads` → created lead
+- `DELETE /leads/:id` → `{ id }`
+- `PATCH /leads/:id/stage` → updated lead
+- `POST /leads/flag` → matching flagged lead(s)
+
+Base URL comes from `VITE_API_URL` (default `http://localhost:3000`). The
+seed tops Postgres up to **~300 leads** so the CRM exercises a realistic
+list size.
+
+`src/hooks/use-leads.ts` uses TanStack Query with **per-page keys**
+`['leads', { page, limit }]` and `placeholderData: keepPreviousData` so
+flipping pages keeps the previous page visible while the next loads.
+Mutations (`useAddLead` / `useDeleteLead` / `useFlagLead` /
+`useUpdateLeadStage`) apply **optimistic** cache patches, then
+`invalidateQueries({ queryKey: ['leads'] })` on settle so every cached
+page refreshes. `LeadsPagination` in the CRM UI wires Prev / numbered
+pages / Next. Tests mock the HTTP surface with MSW
+(`src/test/msw-server.ts`).
 
 ### `ParcelIQEmbed.tsx` — the one place the SDK actually gets used
 
@@ -554,6 +569,8 @@ sequenceDiagram
     participant CRM as host-site (App/LeadsTable/ParcelIQEmbed)
     participant SDK as ParcelIQWidget (packages/sdk)
     participant Widget as iframe-app (bridge + App.tsx)
+    participant PropsAPI as Backend PropertiesModule
+    participant LeadsAPI as Backend LeadsModule
     participant Nominatim
 
     User->>CRM: Click a lead row
@@ -564,8 +581,10 @@ sequenceDiagram
     SDK->>SDK: flushQueue() — sends any queued calls
     CRM->>SDK: widget.loadProperty(lead.address)
     SDK->>Widget: request {method:"loadProperty", id, params}
-    Widget->>Nominatim: fetch geocode
-    Nominatim-->>Widget: address, lat/lon, county, state
+    Widget->>PropsAPI: GET /properties?address=...
+    PropsAPI->>Nominatim: cache miss → geocode (real User-Agent)
+    Nominatim-->>PropsAPI: address, lat/lon, county, state
+    PropsAPI-->>Widget: PropertyResult
     Widget-->>SDK: notify("propertyLoaded", result)
     Widget-->>SDK: response {id, result}
     SDK-->>CRM: promise resolves — onPropertyLoaded fires
@@ -574,7 +593,8 @@ sequenceDiagram
     User->>Widget: Click "Flag as Distressed"
     Widget-->>SDK: notify("propertyFlagged", {address, reason})
     SDK-->>CRM: widget.on("propertyFlagged") fires
-    CRM->>CRM: useFlagLead().mutate(...) → leads-store updates
+    CRM->>LeadsAPI: POST /leads/flag {address, reason}
+    LeadsAPI-->>CRM: updated leads list
     CRM->>CRM: useLeads() query invalidated → table re-renders
     CRM->>User: red "Distressed" badge appears, live
 ```
@@ -600,28 +620,60 @@ simulation anywhere in this flow.
   owns that correctness.
 - **`iframe-app`**: the bridge's pure dispatch logic is tested with plain
   mock objects (no React); `useProperty`/`useSavedProperties` are tested with
-  `renderHook` + MSW intercepting the real Nominatim fetch call, including
-  the offline-fallback path (mock a success, then mock a failure for the
-  same address, assert the stale data survives with `isOffline: true`).
-- **`host-site`**: the leads hooks (including that `useFlagLead` actually
-  marks the right lead), and `LeadsTable`/`EventLogDrawer`/`StagePill`
-  interaction behavior via `@testing-library/user-event` — including that the
-  desktop table and mobile card list (which coexist in the DOM, CSS
-  controlling visibility) are each tested against independently via scoped
-  `within()` queries.
+  `renderHook` + MSW intercepting `GET /properties` (and the saved-properties
+  localStorage path), including the offline-fallback path.
+- **`host-site`**: leads hooks mocked via MSW against `/leads*`, plus
+  `LeadsTable`/`EventLogDrawer`/`StagePill` interaction behavior via
+  `@testing-library/user-event`.
+- **`backend`**: Vitest + `unplugin-swc` (Nest's documented recipe, not Jest).
+  Service unit tests mock Prisma with `vi.fn()`; e2e uses `supertest` against
+  a real `parceliq_test` Postgres database (`yarn workspace backend test:e2e`).
 
-91 tests across 16 files, run together from the repo root with `yarn test`
-(Vitest's `test.projects` config aggregates all four workspaces' individual
-`vitest.config.ts`/`vite.config.ts` files into one run).
+104 unit tests across 19 files, run together from the repo root with `yarn test`
+(Vitest's `test.projects` config aggregates all workspace configs, including
+`backend/vitest.config.ts`).
 
 ---
 
-## 7. Where a real production version would differ
+## 7. Backend — NestJS + Prisma + domain siloing
 
+One Docker Compose service (`backend` on `:3000`) hosts **two Nest modules
+that are treated as separate backends**:
+
+| Module | Domain | Owns | Intended client |
+|--------|--------|------|-----------------|
+| `LeadsModule` | RoofingFlow CRM | `leads` table, paginated `/leads*` | `host-site` only |
+| `PropertiesModule` | ParcelIQ widget | `property_lookup_cache`, `/properties` | `iframe-app` only |
+
+Rules we keep even though they share a process:
+
+- No cross-module domain imports (Properties never touches `Lead`; Leads never
+  touches `PropertyLookupCache`).
+- Shared infra only: `PrismaModule`, `ConfigModule`, throttling, health,
+  exception filter, Swagger.
+- Distress flagging stays **widget → RPC → host CRM → `POST /leads/flag`**.
+  The widget never calls the Leads API; address-keyed flagging exists because
+  the widget only knows an address, not the host's lead id.
+- `stage` is a validated string (not a Postgres enum) so it matches the
+  frontend `LeadStage` union with no mapping layer.
+- Nullable `tenantId` on `Lead` is an unused placeholder for future auth /
+  multi-tenancy — no login in this pass.
+
+Bootstrap hardening: zod-validated env, `helmet`, explicit CORS for
+`:5173`/`:5174` only, global `ValidationPipe` (whitelist + forbid unknown),
+consistent exception filter, `@nestjs/throttler`, Swagger at `/api/docs`.
+
+---
+
+## 8. Where a real production version would differ
+
+- Split Leads and Properties into separate deployables (already siloed as
+  Nest modules) — and likely separate databases / vendors for property data.
 - Nominatim/OpenStreetMap tiles would be replaced with a paid, parcel-accurate
   property-data and mapping vendor — free geocoding is fine for a demo, not
   for real lead data (the Marcus Ortiz/Albany-County mismatch in the seed
   data is a real, left-in example of free-geocoder imprecision, not a bug).
+- Add auth and enforce `tenantId` (column already present).
 - The `parentOrigin` query param (client-suppliable) would become a
   server-issued, signed embed token, so the widget's trust decision can't be
   influenced by whoever constructs the iframe URL.

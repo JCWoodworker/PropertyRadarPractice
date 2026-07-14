@@ -15,30 +15,34 @@
  * illusion of a house growing into a multi-family building and then into a
  * tower, without needing real SVG path-morphing.
  */
+/* Each step re-applies the base translate(-50%, -50%) alongside its scale —
+   keyframes replace the element's whole `transform`, so omitting the
+   translate here would make the icon drift off-center (away from the
+   translate-centered text below it) for the duration of the animation. */
 @keyframes parceliq-grow-home {
   0% {
     opacity: 0;
-    transform: scale(0.5);
+    transform: translate(-50%, -50%) scale(0.5);
   }
   8% {
     opacity: 1;
-    transform: scale(0.7);
+    transform: translate(-50%, -50%) scale(0.7);
   }
   26% {
     opacity: 1;
-    transform: scale(1.08);
+    transform: translate(-50%, -50%) scale(1.08);
   }
   36% {
     opacity: 1;
-    transform: scale(1.08);
+    transform: translate(-50%, -50%) scale(1.08);
   }
   44% {
     opacity: 0;
-    transform: scale(1.25);
+    transform: translate(-50%, -50%) scale(1.25);
   }
   100% {
     opacity: 0;
-    transform: scale(1.25);
+    transform: translate(-50%, -50%) scale(1.25);
   }
 }
 
@@ -46,23 +50,23 @@
   0%,
   38% {
     opacity: 0;
-    transform: scale(0.82);
+    transform: translate(-50%, -50%) scale(0.82);
   }
   48% {
     opacity: 1;
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
   64% {
     opacity: 1;
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
   72% {
     opacity: 0;
-    transform: scale(1.18);
+    transform: translate(-50%, -50%) scale(1.18);
   }
   100% {
     opacity: 0;
-    transform: scale(1.18);
+    transform: translate(-50%, -50%) scale(1.18);
   }
 }
 
@@ -70,15 +74,15 @@
   0%,
   70% {
     opacity: 0;
-    transform: scale(0.82);
+    transform: translate(-50%, -50%) scale(0.82);
   }
   82% {
     opacity: 1;
-    transform: scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
   100% {
     opacity: 1;
-    transform: scale(1.05);
+    transform: translate(-50%, -50%) scale(1.05);
   }
 }
 

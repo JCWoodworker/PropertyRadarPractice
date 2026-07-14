@@ -7,20 +7,22 @@ alwaysApply: false
 # Data-Fetching Hook Pattern — host-site
 
 Every resource gets exactly one "read" hook that folds all of TanStack
-Query's states into one flat, predictable shape:
+Query's states into one flat, predictable shape (leads also expose
+pagination fields):
 
 ```ts
-{ data, isLoading, isEmpty, isError, error, refetch }
+{ leads, page, total, totalPages, isLoading, isFetching, isEmpty, isError, error, refetch }
 ```
 
-- `isEmpty` is a *derived* state (`isSuccess && data.length === 0`), not
-  something TanStack Query gives you — compute it explicitly.
+- `isEmpty` means the query succeeded and **total** is 0 (not merely an
+  empty page mid-list).
 - `error` is always `Error | null`, never the raw unknown from the query.
-- Mutations are separate hooks (`useAddLead`, `useDeleteLead`, `useFlagLead`),
-  each calling `queryClient.invalidateQueries` on the relevant query key in
-  `onSuccess` — never mutate the cache by hand with `setQueryData` unless
-  you have a specific optimistic-update reason.
-- Query keys are defined once as a `const ... = [...] as const` at the top
-  of the module that owns the resource (see `LEADS_KEY` in `use-leads.ts`)
-  and reused by every hook that touches that resource — never inline a
-  query key string in more than one place.
+- Paginated lists use `queryKey: ['leads', { page, limit }]` so each page
+  caches independently; use `placeholderData: keepPreviousData` when
+  flipping pages.
+- Mutations (`useAddLead`, `useDeleteLead`, `useFlagLead`,
+  `useUpdateLeadStage`) use optimistic `onMutate` / rollback `onError` /
+  `onSettled` → `invalidateQueries({ queryKey: ['leads'] })` (prefix match
+  refreshes every cached page).
+- Query key prefixes are defined once (see `LEADS_KEY` in `use-leads.ts`)
+  and reused — never inline a key string in more than one place.

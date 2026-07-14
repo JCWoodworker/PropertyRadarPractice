@@ -13,10 +13,10 @@ drawer, and the bugs that got found and fixed along the way).
 
 ## What's in here
 
-- **Leads list** — `LeadsTable` (desktop, `sm:` and up) / `LeadCard` (mobile)
-  — a responsive table/card-list split with progressive column-hiding at
-  tablet widths, plus `StagePill` (a dropdown to change a lead's pipeline
-  stage inline).
+- **Leads list** — paginated (~300 seeded leads, 25/page) via TanStack Query
+  keys `['leads', { page, limit }]`, with optimistic mutations.
+  `LeadsTable` (desktop) / `LeadCard` (mobile) plus `LeadsPagination` and
+  `StagePill`.
 - **`ParcelIQEmbed`** — the component that actually uses
   `@parceliq/embed-sdk` to mount the widget inside `LeadDetailSheet`.
 - **Live JSON-RPC Event Log** — a bottom-docked, collapsible drawer
@@ -31,9 +31,10 @@ drawer, and the bugs that got found and fixed along the way).
 yarn workspace host-site dev
 ```
 
-Opens on [http://localhost:5173](http://localhost:5173). The embedded widget
-won't render anything useful unless `iframe-app` is also running on
-`:5174` — use `yarn dev` from the repo root to start both.
+Opens on [http://localhost:5173](http://localhost:5173). Needs the Nest
+backend on `:3000` (Postgres + `backend` via Docker) and `iframe-app` on
+`:5174` for a full demo — use `yarn dev` from the repo root to start
+everything.
 
 ## Tests
 

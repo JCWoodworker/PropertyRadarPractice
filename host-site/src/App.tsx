@@ -6,6 +6,7 @@ import { PageHeader, Switch, Toaster, toast } from '@parceliq/ui'
 import { AddLeadDialog } from './components/AddLeadDialog'
 import { EventLogDrawer } from './components/EventLogDrawer'
 import { LeadDetailSheet } from './components/LeadDetailSheet'
+import { LeadsPagination } from './components/LeadsPagination'
 import { LeadsTable } from './components/LeadsTable'
 import type { RpcLogEntry } from './components/ParcelIQEmbed'
 import { SplashScreen } from './components/SplashScreen'
@@ -30,7 +31,20 @@ function getInitialIsDark(): boolean {
 }
 
 function App() {
-  const { leads, isLoading, isEmpty, isError, error, refetch } = useLeads()
+  const [page, setPage] = useState(1)
+  const {
+    leads,
+    page: currentPage,
+    totalPages,
+    total,
+    limit,
+    isLoading,
+    isFetching,
+    isEmpty,
+    isError,
+    error,
+    refetch,
+  } = useLeads(page)
   const addMutation = useAddLead()
   const deleteMutation = useDeleteLead()
   const flagMutation = useFlagLead()
@@ -40,6 +54,13 @@ function App() {
   const [isDark, setIsDark] = useState(getInitialIsDark)
   const [logEntries, setLogEntries] = useState<RpcLogEntry[]>([])
   const [showSplash, setShowSplash] = useState(true)
+
+  // If a deletion empties the last page, step back so we don't sit on an empty page.
+  useEffect(() => {
+    if (!isLoading && totalPages > 0 && page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [isLoading, page, totalPages])
 
   // Memoized so the object identity is stable across renders that don't
   // change `isDark` — ParcelIQEmbed's setTheme effect depends on this
@@ -98,18 +119,28 @@ function App() {
       {/* This is its own scroll container (not the page) specifically so
           leads stay reachable even while the EventLogDrawer below is open
           and overlaying the bottom of the viewport. */}
-      <div className="mt-4 flex-1 overflow-y-auto rounded-lg border border-border sm:mt-6">
-        <LeadsTable
-          leads={leads}
-          isLoading={isLoading}
-          isEmpty={isEmpty}
-          isError={isError}
-          error={error}
-          onRetry={refetch}
-          onSelect={setSelectedLead}
-          onDelete={handleDelete}
-          onStageChange={(id, stage) => updateStageMutation.mutate({ id, stage })}
-          selectedLeadId={selectedLead?.id}
+      <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border sm:mt-6">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <LeadsTable
+            leads={leads}
+            isLoading={isLoading}
+            isEmpty={isEmpty}
+            isError={isError}
+            error={error}
+            onRetry={refetch}
+            onSelect={setSelectedLead}
+            onDelete={handleDelete}
+            onStageChange={(id, stage) => updateStageMutation.mutate({ id, stage })}
+            selectedLeadId={selectedLead?.id}
+          />
+        </div>
+        <LeadsPagination
+          page={currentPage}
+          totalPages={totalPages}
+          total={total}
+          limit={limit}
+          isFetching={isFetching}
+          onPageChange={setPage}
         />
       </div>
 

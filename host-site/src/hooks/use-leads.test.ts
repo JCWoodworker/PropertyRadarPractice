@@ -1,7 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { __resetLeadsForTests } from '../lib/leads-store'
+import { __resetLeadsForTests } from '../test/msw-server'
 import { createQueryWrapper, createTestQueryClient } from '../test/query-client-wrapper'
 import { useAddLead, useDeleteLead, useFlagLead, useLeads, useUpdateLeadStage } from './use-leads'
 
@@ -10,24 +10,26 @@ describe('useLeads + useAddLead + useDeleteLead + useFlagLead + useUpdateLeadSta
     __resetLeadsForTests()
   })
 
-  it('loads the seeded leads', async () => {
-    const { result } = renderHook(() => useLeads(), { wrapper: createQueryWrapper() })
+  it('loads a page of seeded leads', async () => {
+    const { result } = renderHook(() => useLeads(1), { wrapper: createQueryWrapper() })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(result.current.isEmpty).toBe(false)
     expect(result.current.leads.length).toBeGreaterThan(0)
+    expect(result.current.total).toBeGreaterThan(0)
+    expect(result.current.page).toBe(1)
     expect(result.current.leads.every((lead) => !lead.distressFlag)).toBe(true)
   })
 
-  it('adding a lead invalidates the list so the new lead appears', async () => {
+  it('adding a lead invalidates so the new lead appears on page 1', async () => {
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)
 
-    const { result: listResult } = renderHook(() => useLeads(), { wrapper })
+    const { result: listResult } = renderHook(() => useLeads(1), { wrapper })
     const { result: addResult } = renderHook(() => useAddLead(), { wrapper })
     await waitFor(() => expect(listResult.current.isLoading).toBe(false))
-    const initialCount = listResult.current.leads.length
+    const initialTotal = listResult.current.total
 
     addResult.current.mutate({
       name: 'Test Lead',
@@ -39,15 +41,15 @@ describe('useLeads + useAddLead + useDeleteLead + useFlagLead + useUpdateLeadSta
       lastInspection: '2026-01-01',
     })
 
-    await waitFor(() => expect(listResult.current.leads.length).toBe(initialCount + 1))
+    await waitFor(() => expect(listResult.current.total).toBe(initialTotal + 1))
     expect(listResult.current.leads[0]).toMatchObject({ name: 'Test Lead', distressFlag: false })
   })
 
-  it('deleting a lead invalidates the list so it disappears', async () => {
+  it('deleting a lead removes it from the current page', async () => {
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)
 
-    const { result: listResult } = renderHook(() => useLeads(), { wrapper })
+    const { result: listResult } = renderHook(() => useLeads(1), { wrapper })
     const { result: deleteResult } = renderHook(() => useDeleteLead(), { wrapper })
     await waitFor(() => expect(listResult.current.isLoading).toBe(false))
     const [firstLead] = listResult.current.leads
@@ -61,7 +63,7 @@ describe('useLeads + useAddLead + useDeleteLead + useFlagLead + useUpdateLeadSta
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)
 
-    const { result: listResult } = renderHook(() => useLeads(), { wrapper })
+    const { result: listResult } = renderHook(() => useLeads(1), { wrapper })
     const { result: flagResult } = renderHook(() => useFlagLead(), { wrapper })
     await waitFor(() => expect(listResult.current.isLoading).toBe(false))
     const [target] = listResult.current.leads
@@ -76,11 +78,11 @@ describe('useLeads + useAddLead + useDeleteLead + useFlagLead + useUpdateLeadSta
     expect(updated?.distressReason).toBe('Visible roof damage')
   })
 
-  it('updating a lead stage invalidates the list so the new stage is reflected', async () => {
+  it('updating a lead stage is reflected on the page', async () => {
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)
 
-    const { result: listResult } = renderHook(() => useLeads(), { wrapper })
+    const { result: listResult } = renderHook(() => useLeads(1), { wrapper })
     const { result: stageResult } = renderHook(() => useUpdateLeadStage(), { wrapper })
     await waitFor(() => expect(listResult.current.isLoading).toBe(false))
     const [target] = listResult.current.leads

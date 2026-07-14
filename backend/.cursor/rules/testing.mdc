@@ -1,0 +1,20 @@
+---
+description: Vitest unit and e2e conventions for the Nest backend
+globs: **/*.spec.ts,test/**/*.ts
+alwaysApply: false
+---
+
+# Testing conventions — backend
+
+- **Vitest only.** Never add Jest, `ts-jest`, or Jest-only globals.
+- Unit tests live next to services (`*.service.spec.ts`). Mock
+  `PrismaService` (and outbound `fetch`) with `vi.fn()` — do not hit a
+  real DB in unit tests.
+- Use `unplugin-swc` so Nest decorator metadata works under Vitest.
+- E2E tests live in `test/**/*.e2e-spec.ts`, use `supertest`, and target
+  the separate `parceliq_test` database. Run with
+  `yarn workspace backend test:e2e`.
+- One behavior per `it(...)`. Prefer asserting HTTP status + wire shape
+  over implementation details.
+- Root `yarn test` must continue to include `backend/vitest.config.ts`
+  via Vitest projects — do not break that wiring.

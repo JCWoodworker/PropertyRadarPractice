@@ -5,10 +5,13 @@
   "workspaces": [
     "host-site",
     "iframe-app",
+    "backend",
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n host,widget -c blue,magenta \"yarn workspace host-site dev\" \"yarn workspace iframe-app dev\"",
+    "dev": "docker compose up -d postgres backend && concurrently -n host,widget -c blue,magenta \"yarn workspace host-site dev\" \"yarn workspace iframe-app dev\"",
+    "dev:down": "docker compose down",
+    "dev:logs": "docker compose logs -f backend",
     "dev:host": "yarn workspace host-site dev",
     "dev:widget": "yarn workspace iframe-app dev",
     "build": "yarn workspaces run build",

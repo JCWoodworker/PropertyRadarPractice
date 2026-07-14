@@ -1,0 +1,30 @@
+---
+description: Keep README and architecture docs in sync after every code change
+alwaysApply: true
+---
+
+# Documentation — keep markdown current
+
+After any agent session that changes behavior, APIs, architecture, env vars,
+scripts, or developer setup, update the affected docs in the **same turn** —
+do not leave docs for a follow-up pass.
+
+## What to update (check each)
+
+- Workspace `README.md` (this package) when local run/test commands or
+  responsibilities change.
+- Root `README.md` when quickstart, repo layout, architecture diagram,
+  workspaces, or known limitations change.
+- `ARCHITECTURE.md` when modules, data flow, RPC contract, testing strategy,
+  or production differences change — including sequence diagrams.
+- `build-process.md` Decision Log / phase notes when a real trade-off is made
+  (ORM, Docker scope, domain siloing, test runner, etc.).
+- `DEMO.md` only if the interview walkthrough steps change.
+
+## Rules
+
+- Prefer editing existing sections over appending duplicate "also…" notes.
+- Never invent features in docs that the code does not implement.
+- If a change is internal-only (refactor with identical public behavior),
+  skip docs and say so briefly in the response.
+- Do **not** edit plan files under `.cursor/plans/` unless the user asks.

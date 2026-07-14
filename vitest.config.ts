@@ -12,6 +12,7 @@ export default defineConfig({
       'packages/ui/vitest.config.ts',
       'host-site/vite.config.ts',
       'iframe-app/vite.config.ts',
+      'backend/vitest.config.ts',
     ],
   },
 })

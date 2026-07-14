@@ -6,30 +6,29 @@ import { server } from '../test/msw-server'
 import { createQueryWrapper, createTestQueryClient } from '../test/query-client-wrapper'
 import { useProperty } from './use-property'
 
-const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
+const PROPERTIES_URL = 'http://localhost:3000/properties'
 
-function mockNominatimSuccess() {
+function mockPropertySuccess() {
   server.use(
-    http.get(NOMINATIM_URL, () =>
-      HttpResponse.json([
-        {
-          display_name: '123 Main St, Springfield, IL, USA',
-          lat: '39.78',
-          lon: '-89.65',
-          type: 'house',
-          address: { county: 'Sangamon County', state: 'Illinois' },
-        },
-      ])
-    )
+    http.get(PROPERTIES_URL, () =>
+      HttpResponse.json({
+        address: '123 Main St, Springfield, IL, USA',
+        county: 'Sangamon County',
+        state: 'Illinois',
+        lat: 39.78,
+        lon: -89.65,
+        placeType: 'house',
+      }),
+    ),
   )
 }
 
-function mockNominatimEmpty() {
-  server.use(http.get(NOMINATIM_URL, () => HttpResponse.json([])))
+function mockPropertyEmpty() {
+  server.use(http.get(PROPERTIES_URL, () => HttpResponse.json(null)))
 }
 
-function mockNominatimFailure() {
-  server.use(http.get(NOMINATIM_URL, () => HttpResponse.error()))
+function mockPropertyFailure() {
+  server.use(http.get(PROPERTIES_URL, () => HttpResponse.error()))
 }
 
 describe('useProperty', () => {
@@ -38,7 +37,7 @@ describe('useProperty', () => {
   })
 
   it('starts in a loading state and resolves to the geocoded property', async () => {
-    mockNominatimSuccess()
+    mockPropertySuccess()
     const { result } = renderHook(() => useProperty('123 Main St'), { wrapper: createQueryWrapper() })
 
     expect(result.current.isLoading).toBe(true)
@@ -63,8 +62,8 @@ describe('useProperty', () => {
     expect(result.current.property).toBeNull()
   })
 
-  it('reports isEmpty when Nominatim returns zero results', async () => {
-    mockNominatimEmpty()
+  it('reports isEmpty when the backend returns null (no geocode match)', async () => {
+    mockPropertyEmpty()
     const { result } = renderHook(() => useProperty('nowhere at all'), { wrapper: createQueryWrapper() })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
@@ -75,7 +74,7 @@ describe('useProperty', () => {
   })
 
   it('reports isError (not isOffline) when there is no prior cached value', async () => {
-    mockNominatimFailure()
+    mockPropertyFailure()
     const { result } = renderHook(() => useProperty('123 Main St'), { wrapper: createQueryWrapper() })
 
     await waitFor(() => expect(result.current.isError || result.current.isOffline).toBe(true))
@@ -88,12 +87,12 @@ describe('useProperty', () => {
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)
 
-    mockNominatimSuccess()
+    mockPropertySuccess()
     const { result, rerender } = renderHook(() => useProperty('123 Main St'), { wrapper })
     await waitFor(() => expect(result.current.isLoading).toBe(false))
     expect(result.current.property).not.toBeNull()
 
-    mockNominatimFailure()
+    mockPropertyFailure()
     await queryClient.invalidateQueries({ queryKey: ['property', '123 Main St'] })
     rerender()
 

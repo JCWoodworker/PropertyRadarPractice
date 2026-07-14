@@ -1,0 +1,28 @@
+---
+description: Keep README and architecture docs in sync after every code change
+alwaysApply: true
+---
+
+# Documentation — keep markdown current
+
+After any agent session that changes behavior, APIs, architecture, env vars,
+scripts, or developer setup, update the affected docs in the **same turn** —
+do not leave docs for a follow-up pass.
+
+## What to update (check each)
+
+- `backend/README.md` when endpoints, env vars, run/test commands, or
+  domain boundaries change.
+- Root `README.md` when quickstart, Docker Compose, or backend role changes.
+- `ARCHITECTURE.md` § Backend / sequence diagrams when modules, routes,
+  caching, or siloing rules change.
+- `build-process.md` Decision Log when a backend trade-off is made
+  (Prisma, Vitest, Docker scope, domain siloing, shared-process POC, etc.).
+
+## Rules
+
+- Prefer editing existing sections over appending duplicate "also…" notes.
+- Never invent features in docs that the code does not implement.
+- If a change is internal-only (refactor with identical public behavior),
+  skip docs and say so briefly in the response.
+- Do **not** edit plan files under `.cursor/plans/` unless the user asks.

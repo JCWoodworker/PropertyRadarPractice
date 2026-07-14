@@ -1,0 +1,22 @@
+---
+description: NestJS module, DTO, and bootstrap conventions for the backend
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# NestJS patterns — backend
+
+- One feature folder per domain (`leads/`, `properties/`, `health/`) with
+  `*.module.ts`, `*.controller.ts`, `*.service.ts`, and `dto/` as needed.
+- Controllers stay thin: validate via DTOs + `ValidationPipe`, call the
+  service, return the result. No Prisma or `fetch` in controllers.
+- DTOs use `class-validator` + `@ApiProperty` for Swagger. Prefer
+  `whitelist` / `forbidNonWhitelisted` (already global) — never accept
+  undeclared body fields.
+- Wire formats that the frontends already consume must stay stable
+  (e.g. lead `stage` as the same string union as `LeadStage`; dates as
+  `YYYY-MM-DD` strings on the wire).
+- Use Nest `Logger` for unexpected failures; never leak stacks to clients
+  (global `HttpExceptionFilter` owns the error shape).
+- Do not introduce Jest. Tests are Vitest + `unplugin-swc`.
+- Do not add auth guards or login flows unless explicitly requested.

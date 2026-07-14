@@ -310,6 +310,17 @@ usefully intercept — tested directly against the store module instead, with
 a test-only `__resetLeadsForTests()` export to keep tests isolated from each
 other's mutations.
 
+### Phase 12 — Real NestJS + Postgres backend
+
+Replaced the in-memory `leads-store` and browser-side Nominatim calls with a
+NestJS + Prisma + Postgres stack. Postgres and the Nest app run in Docker
+Compose; the Vite frontends stay native. One Nest process hosts two
+**siloed** domains — `LeadsModule` (CRM) and `PropertiesModule` (widget
+property cache) — sharing infra only, so we don't pretend the embed vendor
+and host CRM share a data model. Distress flagging still goes widget → RPC
+→ host → `POST /leads/flag`. Backend tests use Vitest + `unplugin-swc` (not
+Jest) so `yarn test` at the root covers all five workspaces.
+
 ### Phase 11 — Cursor rules
 
 Added `.cursor/rules/*.mdc` files (not a legacy single root `.cursorrules`)
@@ -348,14 +359,23 @@ independently-running dev servers, not just passing unit tests in isolation.
 | SDK/monorepo structure | Two fully independent apps with a duplicated bridge script, a single shared TS module inside `host-site`, a real Yarn workspaces monorepo with a dedicated `packages/sdk` | Yarn workspaces monorepo | Mirrors how PropertyRadar would actually ship this as a real npm package, and made the shared-UI-library decision above essentially free to add. |
 | Workspace protocol | `workspace:*` (Yarn Berry/pnpm syntax) | Plain `"*"` version ranges | `workspace:*` isn't supported by the Yarn Classic (1.22) installed in this environment — failed on the first `yarn install` with a clear error, fixed immediately. |
 | Bidirectional "aha" feature | Read-only widget, widget can write a "flag as distressed" event back to the host | Added `propertyFlagged` | Directly echoes PropertyRadar's own "30+ Distress Signals" marketing language, and is the single best proof that the bridge isn't just a fancy iframe — it can change the host's own data live. |
+| ORM | Prisma, TypeORM | Prisma | Schema-driven migrations + generated types are the right DX for this demo's scale; TypeORM's large-dataset edge doesn't matter here. |
+| Backend infra | Native Nest + local Postgres, full Docker for everything, Docker for Postgres+Nest only | Docker Compose for Postgres + Nest; Vite apps stay native | One-command `yarn dev` still works; frontends keep fast HMR; backend matches a realistic deployable shape. |
+| CRM vs widget backends | Two Nest apps, one Nest app with mixed logic, one Nest app with siloed modules | One process, two siloed modules (`LeadsModule` / `PropertiesModule`) | Avoids standing up a second service for the POC, without pretending the CRM and embed vendor share a domain model — no cross-module table access; distress still goes widget → RPC → host → `/leads/flag`. |
+| Backend test runner | Jest (Nest default), Vitest | Vitest + `unplugin-swc` | Matches the rest of the monorepo; Nest's own Vitest recipe covers decorator metadata. |
+| Leads list scale | Keep 7 seed rows; client-side filter; server page/limit | Seed ~300 + `GET /leads?page&limit` + per-page TanStack keys + optimistic mutations | Demonstrates real list UX and Query caching/invalidation without inventing a second dataset layer. |
 
 ## What I'd do differently in production
 
+- Split the co-located Leads / Properties Nest modules into separate
+  deployables (and likely separate datastores) — the module boundary is
+  already drawn that way on purpose.
 - Swap Nominatim/OpenStreetMap tiles for a paid, parcel-accurate property
   and mapping data vendor — the free tier here is right for a demo, wrong
   for real lead data (see the Marcus Ortiz/Albany-County geocoding mismatch
   in the seed data, a real example of free-geocoder imprecision left in on
   purpose rather than cherry-picked away).
+- Enforce auth and multi-tenancy on the existing `tenantId` placeholder.
 - Replace the client-suppliable `parentOrigin` query param with a
   server-issued, signed embed token so the widget's origin allowlist can't
   be influenced by whoever constructs the iframe URL.

@@ -1,0 +1,18 @@
+---
+description: TypeScript standards for the Nest backend
+globs: **/*.ts
+alwaysApply: false
+---
+
+# TypeScript standards — backend
+
+- Prefer explicit return types on public service methods.
+- Never use `any` to silence errors — narrow with typed exceptions or
+  guards instead.
+- Env access goes through `@nestjs/config` + the zod schema in
+  `src/config/env.validation.ts` — do not read `process.env` ad hoc in
+  feature services (except e2e bootstrap).
+- Keep Nest's `nodenext` module settings; do not reintroduce deprecated
+  `baseUrl` without a `paths` migration (TS 6+).
+- Fail closed on bad input (HTTP 400 via ValidationPipe) rather than
+  coercing silently when it would change domain meaning.

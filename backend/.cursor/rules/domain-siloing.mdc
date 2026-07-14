@@ -1,0 +1,26 @@
+---
+description: CRM vs widget backends stay siloed even in one Nest process
+alwaysApply: true
+---
+
+# Domain siloing — Leads vs Properties
+
+This Nest app co-locates two backends for POC simplicity. Treat them as
+separate services that share infra only.
+
+| Module | Domain | Owns | Client |
+|--------|--------|------|--------|
+| `LeadsModule` | RoofingFlow CRM | `Lead` / `/leads*` | `host-site` only |
+| `PropertiesModule` | ParcelIQ widget | `PropertyLookupCache` / `/properties` | `iframe-app` only |
+
+## Hard rules
+
+- **No cross-domain imports.** `LeadsModule` must not import Properties
+  services/DTOs/tables; `PropertiesModule` must not import Leads ones.
+- Shared pieces are infra only: `PrismaModule`, `ConfigModule`, throttling,
+  health, filters, Swagger.
+- Distress flagging stays **widget → RPC → host → `POST /leads/flag`**.
+  Never add a widget→Leads shortcut; the widget never knows lead ids.
+- Do not join across `leads` and `property_lookup_cache` in one query or
+  service method.
+- Auth/multi-tenancy is out of scope; leave `tenantId` unused until asked.
