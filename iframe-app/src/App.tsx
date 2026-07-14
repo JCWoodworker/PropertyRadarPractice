@@ -50,11 +50,13 @@ function App() {
   }))
 
   // Report our own content height so the host can size the iframe without a scrollbar.
+  // Use offsetHeight (border box), not contentRect — contentRect excludes the
+  // root's padding (`p-4`), which left the bottom ~32px permanently clipped.
   useEffect(() => {
     const el = rootRef.current
     if (!el) return
-    const observer = new ResizeObserver(([entry]) => {
-      notify('resize', { height: Math.ceil(entry.contentRect.height) })
+    const observer = new ResizeObserver(() => {
+      notify('resize', { height: Math.ceil(el.offsetHeight) })
     })
     observer.observe(el)
     return () => observer.disconnect()
