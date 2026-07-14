@@ -1,11 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
-import type { Lead } from '@prisma/client'
+import type { Lead, Prisma } from '@prisma/client'
 
 import { PrismaService } from '../prisma/prisma.service'
 import type { CreateLeadDto } from './dto/create-lead.dto'
 import type { FlagLeadDto } from './dto/flag-lead.dto'
-import type { ListLeadsQueryDto } from './dto/list-leads-query.dto'
+import type { LeadSortField, ListLeadsQueryDto } from './dto/list-leads-query.dto'
 import type { UpdateLeadStageDto } from './dto/update-lead-stage.dto'
+
+/** Allowlist mapping query `sortBy` values to real Prisma orderBy keys. */
+const SORT_FIELD_MAP: Record<LeadSortField, keyof Prisma.LeadOrderByWithRelationInput> = {
+  name: 'name',
+  company: 'company',
+  address: 'address',
+  stage: 'stage',
+  roofAgeYears: 'roofAgeYears',
+  distressFlag: 'distressFlag',
+  createdAt: 'createdAt',
+}
 
 /** Wire format matching the host CRM's existing Lead interface. */
 export interface LeadResponse {
@@ -37,14 +48,19 @@ export class LeadsService {
     const page = query.page
     const limit = query.limit
     const skip = (page - 1) * limit
+    const where = this.buildWhere(query)
+    const sortField = SORT_FIELD_MAP[query.sortBy ?? 'createdAt']
+    const sortOrder = query.sortOrder ?? 'desc'
+    const orderBy = { [sortField]: sortOrder } as Prisma.LeadOrderByWithRelationInput
 
     const [rows, total] = await Promise.all([
       this.prisma.lead.findMany({
-        orderBy: { createdAt: 'desc' },
+        where,
+        orderBy,
         skip,
         take: limit,
       }),
-      this.prisma.lead.count(),
+      this.prisma.lead.count({ where }),
     ])
 
     return {
@@ -54,6 +70,43 @@ export class LeadsService {
       total,
       totalPages: total === 0 ? 0 : Math.ceil(total / limit),
     }
+  }
+
+  /**
+   * `state` isn't a real column — it's derived from the trailing ", ST" in
+   * `address` (see `getStateFromAddress` on the frontend), so it's filtered
+   * the same way here via a suffix match rather than a dedicated field.
+   */
+  private buildWhere(query: ListLeadsQueryDto): Prisma.LeadWhereInput {
+    const where: Prisma.LeadWhereInput = {}
+
+    if (query.stage) {
+      where.stage = query.stage
+    }
+
+    if (query.roofAgeMin !== undefined || query.roofAgeMax !== undefined) {
+      where.roofAgeYears = {
+        ...(query.roofAgeMin !== undefined ? { gte: query.roofAgeMin } : {}),
+        ...(query.roofAgeMax !== undefined ? { lte: query.roofAgeMax } : {}),
+      }
+    }
+
+    if (query.state) {
+      where.address = { endsWith: `, ${query.state}` }
+    }
+
+    if (query.search) {
+      const search = query.search.trim()
+      if (search.length > 0) {
+        where.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { company: { contains: search, mode: 'insensitive' } },
+          { address: { contains: search, mode: 'insensitive' } },
+        ]
+      }
+    }
+
+    return where
   }
 
   async create(dto: CreateLeadDto): Promise<LeadResponse> {

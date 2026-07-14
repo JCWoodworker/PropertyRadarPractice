@@ -97,4 +97,57 @@ describe('PropertiesService', () => {
       ServiceUnavailableException,
     )
   })
+
+  describe('suggest', () => {
+    it('returns an empty array without calling Nominatim for short queries', async () => {
+      const result = await service.suggest('ab')
+
+      expect(result).toEqual([])
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('maps up to several Nominatim matches for a partial address', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => [
+          {
+            display_name: '123 Main Street, Springfield, IL, USA',
+            lat: '39.78',
+            lon: '-89.65',
+            type: 'house',
+            address: { county: 'Sangamon County', state: 'Illinois' },
+          },
+          {
+            display_name: '123 Main Street, Springfield, MA, USA',
+            lat: '42.1',
+            lon: '-72.6',
+            type: 'house',
+            address: { county: 'Hampden County', state: 'Massachusetts' },
+          },
+        ],
+      })
+
+      const result = await service.suggest('123 Main')
+
+      const [url] = fetchMock.mock.calls[0] as [string]
+      expect(url).toContain('limit=5')
+      expect(result).toHaveLength(2)
+      expect(result[0]).toEqual({
+        address: '123 Main Street, Springfield, IL, USA',
+        county: 'Sangamon County',
+        state: 'Illinois',
+        lat: 39.78,
+        lon: -89.65,
+        placeType: 'house',
+      })
+    })
+
+    it('throws ServiceUnavailableException when Nominatim is down', async () => {
+      fetchMock.mockRejectedValue(new Error('network'))
+
+      await expect(service.suggest('123 Main')).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      )
+    })
+  })
 })

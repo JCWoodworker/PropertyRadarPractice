@@ -2,7 +2,7 @@ import { Trash2, TriangleAlert } from 'lucide-react'
 import { Button, StatBadge, cn } from '@parceliq/ui'
 
 import { StagePill } from './StagePill'
-import type { Lead, LeadStage } from '../lib/leads-store'
+import { getStateFromAddress, type Lead, type LeadStage } from '../lib/leads-store'
 
 export interface LeadCardProps {
   lead: Lead
@@ -20,6 +20,8 @@ export interface LeadCardProps {
  * cope, which is what `LeadsTable` does via `hidden sm:block` / `sm:hidden`.
  */
 export function LeadCard({ lead, isSelected, onSelect, onDelete, onStageChange }: LeadCardProps) {
+  const state = getStateFromAddress(lead.address)
+
   return (
     <div className={cn('flex flex-col gap-2 border-b border-border p-4 last:border-0', isSelected && 'bg-muted/50')}>
       <div className="flex items-start justify-between gap-2">
@@ -47,6 +49,7 @@ export function LeadCard({ lead, isSelected, onSelect, onDelete, onStageChange }
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <StagePill stage={lead.stage} onChange={(stage) => onStageChange(lead.id, stage)} />
         <span className="text-xs text-muted-foreground">{lead.roofAgeYears} yr roof</span>
+        {state && <span className="text-xs text-muted-foreground">{state}</span>}
         {lead.distressFlag ? (
           <StatBadge tone="destructive" icon={<TriangleAlert className="size-3" />} label="Distressed" />
         ) : (

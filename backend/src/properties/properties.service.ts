@@ -115,13 +115,60 @@ export class PropertiesService {
     }
 
     const [top] = results
-    return {
-      address: top.display_name,
-      county: top.address?.county ?? null,
-      state: top.address?.state ?? null,
-      lat: Number(top.lat),
-      lon: Number(top.lon),
-      placeType: top.type,
+    return mapNominatimResult(top)
+  }
+
+  /**
+   * Multi-result autocomplete for the "Add lead" form's address field.
+   * Deliberately uncached (unlike `lookup`) — suggestion queries are partial,
+   * high-cardinality text as the user types, so a query-address cache would
+   * mostly just accumulate rows without ever being hit again.
+   */
+  async suggest(query: string): Promise<PropertyLookupResult[]> {
+    const q = query.trim()
+    if (q.length < 3) {
+      return []
     }
+
+    const userAgent = this.config.get('NOMINATIM_USER_AGENT', { infer: true })
+    const url = new URL('https://nominatim.openstreetmap.org/search')
+    url.searchParams.set('q', q)
+    url.searchParams.set('format', 'json')
+    url.searchParams.set('addressdetails', '1')
+    url.searchParams.set('limit', '5')
+
+    let response: Response
+    try {
+      response = await fetch(url.toString(), {
+        headers: {
+          'User-Agent': userAgent,
+          Accept: 'application/json',
+        },
+      })
+    } catch (error) {
+      this.logger.error(`Nominatim network error: ${String(error)}`)
+      throw new ServiceUnavailableException('Property lookup service unavailable')
+    }
+
+    if (!response.ok) {
+      this.logger.warn(`Nominatim returned status ${response.status}`)
+      throw new ServiceUnavailableException(
+        `Property lookup failed with status ${response.status}`,
+      )
+    }
+
+    const results = (await response.json()) as NominatimResult[]
+    return results.map(mapNominatimResult)
+  }
+}
+
+function mapNominatimResult(result: NominatimResult): PropertyLookupResult {
+  return {
+    address: result.display_name,
+    county: result.address?.county ?? null,
+    state: result.address?.state ?? null,
+    lat: Number(result.lat),
+    lon: Number(result.lon),
+    placeType: result.type,
   }
 }

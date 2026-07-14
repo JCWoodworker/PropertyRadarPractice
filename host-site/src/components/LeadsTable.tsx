@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trash2, TriangleAlert } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, Trash2, TriangleAlert } from 'lucide-react'
 import {
   Button,
   ConfirmDialog,
@@ -13,11 +13,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  cn,
 } from '@parceliq/ui'
 
 import { LeadCard } from './LeadCard'
 import { StagePill } from './StagePill'
-import type { Lead, LeadStage } from '../lib/leads-store'
+import { getStateFromAddress, type Lead, type LeadSortField, type LeadStage, type SortOrder } from '../lib/leads-store'
 
 export interface LeadsTableProps {
   leads: Lead[]
@@ -30,6 +31,42 @@ export interface LeadsTableProps {
   onDelete: (id: string) => void
   onStageChange: (id: string, stage: LeadStage) => void
   selectedLeadId?: string | null
+  sortBy?: LeadSortField
+  sortOrder?: SortOrder
+  onSortChange?: (sortBy: LeadSortField, sortOrder: SortOrder) => void
+}
+
+/** A `TableHead` whose label is a button that toggles sort on click — ascending on a new field, flipped direction on a re-click of the active one. */
+function SortableHead({
+  field,
+  label,
+  sortBy,
+  sortOrder,
+  onSortChange,
+  className,
+}: {
+  field: LeadSortField
+  label: string
+  sortBy?: LeadSortField
+  sortOrder?: SortOrder
+  onSortChange?: (sortBy: LeadSortField, sortOrder: SortOrder) => void
+  className?: string
+}) {
+  const isActive = sortBy === field
+  const Icon = isActive ? (sortOrder === 'asc' ? ArrowUp : ArrowDown) : ArrowUpDown
+
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        onClick={() => onSortChange?.(field, isActive && sortOrder === 'asc' ? 'desc' : 'asc')}
+      >
+        {label}
+        <Icon className={cn('size-3', !isActive && 'opacity-50')} aria-hidden="true" />
+      </button>
+    </TableHead>
+  )
 }
 
 export function LeadsTable({
@@ -43,6 +80,9 @@ export function LeadsTable({
   onDelete,
   onStageChange,
   selectedLeadId,
+  sortBy,
+  sortOrder,
+  onSortChange,
 }: LeadsTableProps) {
   const [pendingDelete, setPendingDelete] = useState<Lead | null>(null)
 
@@ -83,17 +123,33 @@ export function LeadsTable({
       <Table className="hidden sm:table">
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            {/* Company and Roof age are progressively hidden at narrower
-                widths rather than forcing horizontal scroll on the whole
-                table — the columns that matter most for scanning a lead
-                (name, address, stage, status, actions) always stay visible
-                without scrolling; the rest reappear as there's more room. */}
-            <TableHead className="hidden lg:table-cell">Company</TableHead>
-            <TableHead>Property address</TableHead>
-            <TableHead>Stage</TableHead>
-            <TableHead className="hidden md:table-cell">Roof age</TableHead>
-            <TableHead>Status</TableHead>
+            <SortableHead field="name" label="Name" sortBy={sortBy} sortOrder={sortOrder} onSortChange={onSortChange} />
+            {/* Company, State, and Roof age are progressively hidden at
+                narrower widths rather than forcing horizontal scroll on the
+                whole table — the columns that matter most for scanning a
+                lead (name, address, stage, status, actions) always stay
+                visible without scrolling; the rest reappear as there's more
+                room. */}
+            <SortableHead
+              field="company"
+              label="Company"
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={onSortChange}
+              className="hidden lg:table-cell"
+            />
+            <SortableHead field="address" label="Property address" sortBy={sortBy} sortOrder={sortOrder} onSortChange={onSortChange} />
+            <TableHead className="hidden xl:table-cell">State</TableHead>
+            <SortableHead field="stage" label="Stage" sortBy={sortBy} sortOrder={sortOrder} onSortChange={onSortChange} />
+            <SortableHead
+              field="roofAgeYears"
+              label="Roof age"
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={onSortChange}
+              className="hidden md:table-cell"
+            />
+            <SortableHead field="distressFlag" label="Status" sortBy={sortBy} sortOrder={sortOrder} onSortChange={onSortChange} />
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -109,6 +165,7 @@ export function LeadsTable({
             // non-interactive cells avoids that entirely instead of fighting
             // it with stopPropagation calls.
             const selectLead = () => onSelect(lead)
+            const state = getStateFromAddress(lead.address)
 
             return (
               <TableRow key={lead.id} data-state={lead.id === selectedLeadId ? 'selected' : undefined}>
@@ -120,6 +177,9 @@ export function LeadsTable({
                 </TableCell>
                 <TableCell className="max-w-48 cursor-pointer truncate lg:max-w-64" title={lead.address} onClick={selectLead}>
                   {lead.address}
+                </TableCell>
+                <TableCell className="hidden cursor-pointer xl:table-cell" onClick={selectLead}>
+                  {state ?? '—'}
                 </TableCell>
                 <TableCell>
                   <StagePill stage={lead.stage} onChange={(stage) => onStageChange(lead.id, stage)} />

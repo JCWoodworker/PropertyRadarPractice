@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Input, Label } from '@parceliq/ui'
 
+import { AddressAutocomplete } from './AddressAutocomplete'
 import type { LeadStage, NewLeadInput } from '../lib/leads-store'
 
 const STAGES: LeadStage[] = ['Needs Estimate', 'Scheduled', 'Quoted', 'Won', 'Lost']
@@ -60,11 +61,11 @@ export function AddLeadDialog({ onAdd, isSubmitting }: AddLeadDialogProps) {
             <Input required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} />
           </Field>
           <Field label="Property address">
-            <Input
+            <AddressAutocomplete
               required
               placeholder="e.g. 350 Fifth Avenue, New York, NY"
               value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              onChange={(address) => setForm({ ...form, address })}
             />
           </Field>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

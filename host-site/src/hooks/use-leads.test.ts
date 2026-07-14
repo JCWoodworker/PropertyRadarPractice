@@ -22,6 +22,28 @@ describe('useLeads + useAddLead + useDeleteLead + useFlagLead + useUpdateLeadSta
     expect(result.current.leads.every((lead) => !lead.distressFlag)).toBe(true)
   })
 
+  it('filters by stage', async () => {
+    const { result } = renderHook(() => useLeads(1, { stage: 'Scheduled' }), {
+      wrapper: createQueryWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.leads.every((lead) => lead.stage === 'Scheduled')).toBe(true)
+    expect(result.current.leads.length).toBeGreaterThan(0)
+  })
+
+  it('sorts by roof age ascending', async () => {
+    const { result } = renderHook(() => useLeads(1, { sortBy: 'roofAgeYears', sortOrder: 'asc' }), {
+      wrapper: createQueryWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    const roofAges = result.current.leads.map((lead) => lead.roofAgeYears)
+    expect(roofAges).toEqual([...roofAges].sort((a, b) => a - b))
+  })
+
   it('adding a lead invalidates so the new lead appears on page 1', async () => {
     const queryClient = createTestQueryClient()
     const wrapper = createQueryWrapper(queryClient)

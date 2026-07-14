@@ -40,10 +40,62 @@ export function __resetLeadsForTests(): void {
   leads = INITIAL_LEADS.map((lead) => ({ ...lead }))
 }
 
-function paginate(page: number, limit: number): PaginatedLeads {
-  const total = leads.length
+/**
+ * Mirrors the backend's `LeadsService.list()` filter/sort semantics closely
+ * enough for hook/component tests — see
+ * `backend/src/leads/leads.service.ts` for the source of truth.
+ */
+function applyFiltersAndSort(url: URL): Lead[] {
+  let result = [...leads]
+
+  const stage = url.searchParams.get('stage')
+  if (stage) {
+    result = result.filter((lead) => lead.stage === stage)
+  }
+
+  const roofAgeMin = url.searchParams.get('roofAgeMin')
+  if (roofAgeMin) {
+    result = result.filter((lead) => lead.roofAgeYears >= Number(roofAgeMin))
+  }
+
+  const roofAgeMax = url.searchParams.get('roofAgeMax')
+  if (roofAgeMax) {
+    result = result.filter((lead) => lead.roofAgeYears <= Number(roofAgeMax))
+  }
+
+  const state = url.searchParams.get('state')
+  if (state) {
+    result = result.filter((lead) => lead.address.endsWith(`, ${state}`))
+  }
+
+  const search = url.searchParams.get('search')
+  if (search) {
+    const needle = search.toLowerCase()
+    result = result.filter(
+      (lead) =>
+        lead.name.toLowerCase().includes(needle) ||
+        lead.company.toLowerCase().includes(needle) ||
+        lead.address.toLowerCase().includes(needle),
+    )
+  }
+
+  const sortBy = url.searchParams.get('sortBy') as keyof Lead | null
+  const sortOrder = url.searchParams.get('sortOrder') ?? 'desc'
+  if (sortBy) {
+    result.sort((a, b) => {
+      const [av, bv] = [a[sortBy], b[sortBy]]
+      const cmp = av === bv ? 0 : av > bv ? 1 : -1
+      return sortOrder === 'asc' ? cmp : -cmp
+    })
+  }
+
+  return result
+}
+
+function paginate(rows: Lead[], page: number, limit: number): PaginatedLeads {
+  const total = rows.length
   const start = (page - 1) * limit
-  const data = leads.slice(start, start + limit)
+  const data = rows.slice(start, start + limit)
   return {
     data,
     page,
@@ -58,7 +110,23 @@ export const leadsHandlers = [
     const url = new URL(request.url)
     const page = Number(url.searchParams.get('page') ?? '1')
     const limit = Number(url.searchParams.get('limit') ?? String(LEADS_PAGE_SIZE))
-    return HttpResponse.json(paginate(page, limit))
+    return HttpResponse.json(paginate(applyFiltersAndSort(url), page, limit))
+  }),
+
+  http.get(`${API_URL}/properties/suggest`, ({ request }) => {
+    const url = new URL(request.url)
+    const q = url.searchParams.get('q') ?? ''
+    if (q.trim().length < 3) return HttpResponse.json([])
+    return HttpResponse.json([
+      {
+        address: `${q} Street, Springfield, IL`,
+        county: 'Sangamon County',
+        state: 'Illinois',
+        lat: 39.78,
+        lon: -89.65,
+        placeType: 'house',
+      },
+    ])
   }),
 
   http.post(`${API_URL}/leads`, async ({ request }) => {

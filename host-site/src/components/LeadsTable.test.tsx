@@ -47,6 +47,7 @@ function renderTable(overrides: Partial<ComponentProps<typeof LeadsTable>> = {})
       onSelect={noop}
       onDelete={noop}
       onStageChange={noop}
+      onSortChange={noop}
       {...overrides}
     />
   )
@@ -124,6 +125,30 @@ describe('LeadsTable', () => {
       expect(within(table).getByText('Scheduled')).toBeInTheDocument()
       expect(within(table).getAllByText('Distressed')).toHaveLength(1)
       expect(within(table).getAllByText('Normal')).toHaveLength(1)
+    })
+
+    it('renders a State column derived from the trailing address segment', () => {
+      const { table } = renderTable()
+      expect(within(table).getByText('DC')).toBeInTheDocument()
+      expect(within(table).getByText('NY')).toBeInTheDocument()
+    })
+
+    it('clicking a column header sorts ascending on a field with no active sort', async () => {
+      const onSortChange = vi.fn()
+      const { table } = renderTable({ onSortChange })
+
+      await userEvent.click(within(table).getByRole('button', { name: 'Name' }))
+
+      expect(onSortChange).toHaveBeenCalledWith('name', 'asc')
+    })
+
+    it('clicking the active sort column flips its direction', async () => {
+      const onSortChange = vi.fn()
+      const { table } = renderTable({ onSortChange, sortBy: 'name', sortOrder: 'asc' })
+
+      await userEvent.click(within(table).getByRole('button', { name: 'Name' }))
+
+      expect(onSortChange).toHaveBeenCalledWith('name', 'desc')
     })
 
     it('calls onSelect with the clicked lead', async () => {

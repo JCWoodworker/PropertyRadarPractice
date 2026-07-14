@@ -14,15 +14,30 @@ import {
   listLeads,
   updateLeadStage,
   type Lead,
+  type LeadSortField,
   type LeadStage,
   type NewLeadInput,
   type PaginatedLeads,
+  type SortOrder,
 } from '../lib/leads-store'
 
 export const LEADS_KEY = ['leads'] as const
 
-function leadsQueryKey(page: number, limit = LEADS_PAGE_SIZE) {
-  return [...LEADS_KEY, { page, limit }] as const
+/** Everything besides pagination that can filter/sort the leads list — see `useLeads`. */
+export interface LeadsFilters {
+  sortBy?: LeadSortField
+  sortOrder?: SortOrder
+  stage?: LeadStage
+  roofAgeMin?: number
+  roofAgeMax?: number
+  state?: string
+  search?: string
+}
+
+const NO_FILTERS: LeadsFilters = {}
+
+function leadsQueryKey(page: number, limit = LEADS_PAGE_SIZE, filters: LeadsFilters = NO_FILTERS) {
+  return [...LEADS_KEY, { page, limit, ...filters }] as const
 }
 
 function mapLeadPages(
@@ -51,11 +66,11 @@ export interface UseLeadsResult {
 }
 
 /** Single source of truth for the leads list's data-fetching states — see `.cursor/rules/data-fetching.mdc`. */
-export function useLeads(page: number): UseLeadsResult {
+export function useLeads(page: number, filters: LeadsFilters = NO_FILTERS): UseLeadsResult {
   const limit = LEADS_PAGE_SIZE
   const query = useQuery({
-    queryKey: leadsQueryKey(page, limit),
-    queryFn: () => listLeads(page, limit),
+    queryKey: leadsQueryKey(page, limit, filters),
+    queryFn: () => listLeads({ page, limit, ...filters }),
     placeholderData: keepPreviousData,
   })
 

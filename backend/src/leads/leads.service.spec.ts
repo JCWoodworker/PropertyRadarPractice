@@ -45,10 +45,12 @@ describe('LeadsService', () => {
     const result = await service.list({ page: 2, limit: 25 })
 
     expect(prisma.lead.findMany).toHaveBeenCalledWith({
+      where: {},
       orderBy: { createdAt: 'desc' },
       skip: 25,
       take: 25,
     })
+    expect(prisma.lead.count).toHaveBeenCalledWith({ where: {} })
     expect(result).toEqual({
       data: [
         {
@@ -69,6 +71,70 @@ describe('LeadsService', () => {
       total: 40,
       totalPages: 2,
     })
+  })
+
+  it('sorts by an arbitrary allowlisted field and direction', async () => {
+    prisma.lead.findMany.mockResolvedValue([mockLead])
+    prisma.lead.count.mockResolvedValue(1)
+
+    await service.list({ page: 1, limit: 25, sortBy: 'roofAgeYears', sortOrder: 'asc' })
+
+    expect(prisma.lead.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { roofAgeYears: 'asc' } }),
+    )
+  })
+
+  it('filters by stage', async () => {
+    prisma.lead.findMany.mockResolvedValue([mockLead])
+    prisma.lead.count.mockResolvedValue(1)
+
+    await service.list({ page: 1, limit: 25, stage: 'Won' })
+
+    expect(prisma.lead.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { stage: 'Won' } }),
+    )
+    expect(prisma.lead.count).toHaveBeenCalledWith({ where: { stage: 'Won' } })
+  })
+
+  it('filters by roof age range', async () => {
+    prisma.lead.findMany.mockResolvedValue([mockLead])
+    prisma.lead.count.mockResolvedValue(1)
+
+    await service.list({ page: 1, limit: 25, roofAgeMin: 10, roofAgeMax: 20 })
+
+    expect(prisma.lead.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { roofAgeYears: { gte: 10, lte: 20 } } }),
+    )
+  })
+
+  it('filters by state via an address suffix match', async () => {
+    prisma.lead.findMany.mockResolvedValue([mockLead])
+    prisma.lead.count.mockResolvedValue(1)
+
+    await service.list({ page: 1, limit: 25, state: 'DC' })
+
+    expect(prisma.lead.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { address: { endsWith: ', DC' } } }),
+    )
+  })
+
+  it('searches across name, company, and address (case-insensitive)', async () => {
+    prisma.lead.findMany.mockResolvedValue([mockLead])
+    prisma.lead.count.mockResolvedValue(1)
+
+    await service.list({ page: 1, limit: 25, search: 'whitfield' })
+
+    expect(prisma.lead.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          OR: [
+            { name: { contains: 'whitfield', mode: 'insensitive' } },
+            { company: { contains: 'whitfield', mode: 'insensitive' } },
+            { address: { contains: 'whitfield', mode: 'insensitive' } },
+          ],
+        },
+      }),
+    )
   })
 
   it('creates a lead and returns the created entity', async () => {
