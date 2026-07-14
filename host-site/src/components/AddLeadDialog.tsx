@@ -67,10 +67,10 @@ export function AddLeadDialog({ onAdd, isSubmitting }: AddLeadDialogProps) {
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Stage">
               <select
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-sm"
+                className="h-10 rounded-md border border-input bg-transparent px-3 text-base shadow-sm sm:text-sm"
                 value={form.stage}
                 onChange={(e) => setForm({ ...form, stage: e.target.value as LeadStage })}
               >

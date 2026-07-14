@@ -19,14 +19,18 @@ export const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const sheetVariants = cva(
-  'fixed z-50 gap-4 border-border bg-card p-6 shadow-lg transition ease-in-out',
+  'fixed z-50 flex flex-col gap-4 border-border bg-card p-4 shadow-lg transition ease-in-out sm:p-6',
   {
     variants: {
       side: {
-        top: 'inset-x-0 top-0 border-b',
-        bottom: 'inset-x-0 bottom-0 border-t',
-        left: 'inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm',
-        right: 'inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm',
+        top: 'inset-x-0 top-0 max-h-[85vh] border-b',
+        bottom: 'inset-x-0 bottom-0 max-h-[85vh] border-t',
+        // Full-width/full-height on phones (a cramped 75%-width panel is
+        // hard to use one-handed and shrinks tap targets further) —
+        // becomes a fixed-width side panel from the `sm` breakpoint up,
+        // once there's enough room for a panel *and* visible backdrop.
+        left: 'inset-y-0 left-0 h-full w-full border-r sm:w-3/4 sm:max-w-sm',
+        right: 'inset-y-0 right-0 h-full w-full border-l sm:w-3/4 sm:max-w-sm',
       },
     },
     defaultVariants: {

@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@parceliq/ui'
 
+import { LeadCard } from './LeadCard'
 import { StagePill } from './StagePill'
 import type { Lead, LeadStage } from '../lib/leads-store'
 
@@ -65,14 +66,33 @@ export function LeadsTable({
 
   return (
     <>
-      <Table>
+      {/* Card list below `sm` — see LeadCard for why. */}
+      <div className="sm:hidden" data-testid="lead-cards">
+        {leads.map((lead) => (
+          <LeadCard
+            key={lead.id}
+            lead={lead}
+            isSelected={lead.id === selectedLeadId}
+            onSelect={onSelect}
+            onDelete={setPendingDelete}
+            onStageChange={onStageChange}
+          />
+        ))}
+      </div>
+
+      <Table className="hidden sm:table">
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Company</TableHead>
+            {/* Company and Roof age are progressively hidden at narrower
+                widths rather than forcing horizontal scroll on the whole
+                table — the columns that matter most for scanning a lead
+                (name, address, stage, status, actions) always stay visible
+                without scrolling; the rest reappear as there's more room. */}
+            <TableHead className="hidden lg:table-cell">Company</TableHead>
             <TableHead>Property address</TableHead>
             <TableHead>Stage</TableHead>
-            <TableHead>Roof age</TableHead>
+            <TableHead className="hidden md:table-cell">Roof age</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -95,16 +115,16 @@ export function LeadsTable({
                 <TableCell className="cursor-pointer font-medium" onClick={selectLead}>
                   {lead.name}
                 </TableCell>
-                <TableCell className="cursor-pointer" onClick={selectLead}>
+                <TableCell className="hidden cursor-pointer lg:table-cell" onClick={selectLead}>
                   {lead.company}
                 </TableCell>
-                <TableCell className="max-w-64 cursor-pointer truncate" title={lead.address} onClick={selectLead}>
+                <TableCell className="max-w-48 cursor-pointer truncate lg:max-w-64" title={lead.address} onClick={selectLead}>
                   {lead.address}
                 </TableCell>
                 <TableCell>
                   <StagePill stage={lead.stage} onChange={(stage) => onStageChange(lead.id, stage)} />
                 </TableCell>
-                <TableCell className="cursor-pointer" onClick={selectLead}>
+                <TableCell className="hidden cursor-pointer md:table-cell" onClick={selectLead}>
                   {lead.roofAgeYears} yrs
                 </TableCell>
                 <TableCell className="cursor-pointer" onClick={selectLead}>

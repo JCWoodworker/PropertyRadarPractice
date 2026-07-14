@@ -1,8 +1,9 @@
 # Interview Demo Script
 
-A ~3-minute walkthrough for showing this POC live. Setup: `yarn dev` running
-from the repo root, both tabs open (`:5173` host CRM, `:5174` widget preview
-if you want to show it standalone first).
+A ~3-4 minute walkthrough for showing this POC live. Setup: `yarn dev`
+running from the repo root, host CRM tab open at `:5173`. Read
+[`ARCHITECTURE.md`](./ARCHITECTURE.md) beforehand so you can answer any
+follow-up question about *how* something works, not just demo that it does.
 
 ## The Hook
 
@@ -23,7 +24,8 @@ Open the repo structure. Point out:
   library, not a raw `<iframe>` tag.
 - `packages/ui` (`@parceliq/ui`) is a shared shadcn/Radix/Tailwind component
   library consumed by *both* apps, so the widget and the host never drift
-  in look-and-feel even though they're deployed completely separately.
+  in look-and-feel even though they're deployed completely separately —
+  and it's fully responsive down to phone widths, not just a desktop demo.
 
 > "This is the part I actually care about for this role — proving I can
 > design a component library that stays consistent across two totally
@@ -34,10 +36,13 @@ Open the repo structure. Point out:
 1. Open **RoofingFlow CRM** (`:5173`) — a fake CRM for roofing contractors,
    deliberately modeled on PropertyRadar's own Home & Property Services
    plays (aging systems, equity upgrades) rather than a generic leads list.
-2. Point at the **Live JSON-RPC Event Log** panel — empty so far.
-3. Click a lead. Watch the log fire `loadProperty` — the widget mounts,
-   geocodes the address via OpenStreetMap Nominatim, and renders a
-   `PropertyCard` with a Leaflet pin drop, live.
+2. Click a lead. Watch the widget mount inside the Sheet, geocode the
+   address via OpenStreetMap Nominatim, and render a `PropertyCard` with a
+   Leaflet pin drop, live.
+3. Click the bottom-center **"Show Live JSON-RPC Event Log"** tab — it
+   slides up a drawer showing the exact `ready` → `loadProperty` →
+   `propertyLoaded` → `resize` traffic that just happened, sourced straight
+   from the SDK's own debug hook, not a simulated log.
 4. Toggle the CRM's light/dark switch. Watch `setTheme` fire in the log —
    the widget instantly re-skins to match, no reload.
 
@@ -52,8 +57,20 @@ Open the repo structure. Point out:
 > hand real signal back to the host's own data — which is exactly the kind
 > of 'distress signal' PropertyRadar already sells as a core feature."
 
-## Two asides worth mentioning if there's time
+## A few more things worth showing if there's time
 
+- **Inline stage editing**: click any Stage pill in the leads table — it's
+  a dropdown, not static text. Picking a new stage persists immediately.
+  Small, but it's the same "click something, get an intuitive menu, done"
+  interaction language the whole UI library is built around.
+- **Delete confirmation**: click a lead's delete button — it opens a proper
+  `AlertDialog`-based confirmation instead of deleting immediately. A small
+  detail, but it's a second shared, reusable component
+  (`ConfirmDialog`) doing real work, not a one-off.
+- **Resize the browser window down to phone width.** The leads table
+  switches to a card-based list, the Sheet goes full-screen, and every
+  button meets a real touch-target minimum on touch devices — this isn't a
+  desktop-only prototype.
 - **Offline resilience**: the widget persists its query cache to
   `localStorage`. If a lookup's network request fails but a cached result
   exists, it shows the cached property with a "you appear to be offline"
@@ -72,4 +89,5 @@ Open the repo structure. Point out:
 > "This architecture would let a third-party CRM embed PropertyRadar's data
 > directly in its own UI — strict security boundaries via origin
 > validation, zero CSS collisions via a shared design-token system, and no
-> loss of the host's own brand polish, in both directions."
+> loss of the host's own brand polish, in both directions, on any screen
+> size."

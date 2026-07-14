@@ -21,12 +21,15 @@ export function EventLogDrawer({ entries }: EventLogDrawerProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 flex flex-col items-center">
+    // `pb-[env(safe-area-inset-bottom)]` keeps the tab and panel clear of
+    // the home-indicator gesture area on notched phones, where anything
+    // flush against the true bottom edge is awkward to tap reliably.
+    <div className="fixed inset-x-0 bottom-0 z-40 flex flex-col items-center pb-[env(safe-area-inset-bottom)]">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
-        className="flex items-center gap-2 rounded-t-md border border-b-0 border-border bg-card px-4 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-11 items-center gap-2 rounded-t-md border border-b-0 border-border bg-card px-4 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         <Radio className="size-3.5 text-primary" aria-hidden="true" />
         Show Live JSON-RPC Event Log

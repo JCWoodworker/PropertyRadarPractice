@@ -78,7 +78,15 @@ function App() {
   }
 
   return (
-    <div ref={rootRef} className="min-h-screen bg-background p-4 text-foreground">
+    // NOT `min-h-screen`: `100vh` here resolves against *this iframe's own*
+    // viewport, which is exactly the dimension the host sets based on the
+    // ResizeObserver measurement below — a `vh` floor on the very element
+    // being measured makes the resize signal self-referential and unreliable
+    // (the box asserts it's "at least as tall as whatever height I already
+    // am" instead of reporting its true content height). Only apply a
+    // full-height floor in standalone preview mode, where there's no host
+    // resizing anything and we just want the page to fill the browser tab.
+    <div ref={rootRef} className={isStandalone ? 'min-h-screen bg-background p-4 text-foreground' : 'bg-background p-4 text-foreground'}>
       {isStandalone ? (
         <div className="mb-3 rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           Preview mode — normally this widget is loaded inside a host CRM via an iframe. Showing a default address.

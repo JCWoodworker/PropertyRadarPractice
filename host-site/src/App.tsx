@@ -8,10 +8,26 @@ import { EventLogDrawer } from './components/EventLogDrawer'
 import { LeadDetailSheet } from './components/LeadDetailSheet'
 import { LeadsTable } from './components/LeadsTable'
 import type { RpcLogEntry } from './components/ParcelIQEmbed'
+import { SplashScreen } from './components/SplashScreen'
 import { useAddLead, useDeleteLead, useFlagLead, useLeads, useUpdateLeadStage } from './hooks/use-leads'
 import type { Lead } from './lib/leads-store'
 
 const MAX_LOG_ENTRIES = 60
+const THEME_STORAGE_KEY = 'roofingflow.theme'
+
+/**
+ * Reads a remembered choice first, falling back to the OS-level preference.
+ * Computed synchronously as a `useState` lazy initializer (not in an effect)
+ * so the very first paint — including the splash screen — already has the
+ * right theme instead of flashing light-then-dark.
+ */
+function getInitialIsDark(): boolean {
+  if (typeof window === 'undefined') return false
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+  if (stored === 'dark') return true
+  if (stored === 'light') return false
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+}
 
 function App() {
   const { leads, isLoading, isEmpty, isError, error, refetch } = useLeads()
@@ -21,8 +37,9 @@ function App() {
   const updateStageMutation = useUpdateLeadStage()
 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
-  const [isDark, setIsDark] = useState(false)
+  const [isDark, setIsDark] = useState(getInitialIsDark)
   const [logEntries, setLogEntries] = useState<RpcLogEntry[]>([])
+  const [showSplash, setShowSplash] = useState(true)
 
   // Memoized so the object identity is stable across renders that don't
   // change `isDark` — ParcelIQEmbed's setTheme effect depends on this
@@ -37,6 +54,7 @@ function App() {
   // `.dark` is on a real ancestor of `document.body` — i.e. `<html>`.
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark)
+    window.localStorage.setItem(THEME_STORAGE_KEY, isDark ? 'dark' : 'light')
   }, [isDark])
 
   function handleLog(entry: RpcLogEntry) {
@@ -53,13 +71,20 @@ function App() {
     setSelectedLead((current) => (current?.id === id ? null : current))
   }
 
+  // Every hard refresh gets the splash — it's real component state, reset
+  // on every fresh mount of `App`, not something persisted across reloads.
+  // Nothing else in this component tree renders while it's up.
+  if (showSplash) {
+    return <SplashScreen onDone={() => setShowSplash(false)} />
+  }
+
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background p-6 text-foreground">
+    <div className="flex h-screen flex-col overflow-hidden bg-background p-4 text-foreground sm:p-6">
       <PageHeader
         title="RoofingFlow CRM"
         description="Leads for roofing & home-services contractors — with a live ParcelIQ property widget embedded per lead."
         actions={
-          <div className="flex items-center gap-4">
+          <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start">
             <div className="flex items-center gap-2">
               <Sun className="size-4" aria-hidden="true" />
               <Switch checked={isDark} onCheckedChange={setIsDark} aria-label="Toggle dark mode" />
@@ -73,7 +98,7 @@ function App() {
       {/* This is its own scroll container (not the page) specifically so
           leads stay reachable even while the EventLogDrawer below is open
           and overlaying the bottom of the viewport. */}
-      <div className="mt-6 flex-1 overflow-y-auto rounded-lg border border-border">
+      <div className="mt-4 flex-1 overflow-y-auto rounded-lg border border-border sm:mt-6">
         <LeadsTable
           leads={leads}
           isLoading={isLoading}
