@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { addLead, deleteLead, flagLeadByAddress, listLeads, type Lead, type NewLeadInput } from '../lib/leads-store'
+import {
+  addLead,
+  deleteLead,
+  flagLeadByAddress,
+  listLeads,
+  updateLeadStage,
+  type Lead,
+  type LeadStage,
+  type NewLeadInput,
+} from '../lib/leads-store'
 
 const LEADS_KEY = ['leads'] as const
 
@@ -41,6 +50,17 @@ export function useDeleteLead() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => deleteLead(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: LEADS_KEY })
+    },
+  })
+}
+
+/** Called from the Stage pill's dropdown menu in the leads table. */
+export function useUpdateLeadStage() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, stage }: { id: string; stage: LeadStage }) => updateLeadStage(id, stage),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: LEADS_KEY })
     },

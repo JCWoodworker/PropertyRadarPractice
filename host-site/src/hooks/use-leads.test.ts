@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { __resetLeadsForTests } from '../lib/leads-store'
 import { createQueryWrapper, createTestQueryClient } from '../test/query-client-wrapper'
-import { useAddLead, useDeleteLead, useFlagLead, useLeads } from './use-leads'
+import { useAddLead, useDeleteLead, useFlagLead, useLeads, useUpdateLeadStage } from './use-leads'
 
-describe('useLeads + useAddLead + useDeleteLead + useFlagLead', () => {
+describe('useLeads + useAddLead + useDeleteLead + useFlagLead + useUpdateLeadStage', () => {
   beforeEach(() => {
     __resetLeadsForTests()
   })
@@ -74,5 +74,22 @@ describe('useLeads + useAddLead + useDeleteLead + useFlagLead', () => {
     })
     const updated = listResult.current.leads.find((lead) => lead.id === target.id)
     expect(updated?.distressReason).toBe('Visible roof damage')
+  })
+
+  it('updating a lead stage invalidates the list so the new stage is reflected', async () => {
+    const queryClient = createTestQueryClient()
+    const wrapper = createQueryWrapper(queryClient)
+
+    const { result: listResult } = renderHook(() => useLeads(), { wrapper })
+    const { result: stageResult } = renderHook(() => useUpdateLeadStage(), { wrapper })
+    await waitFor(() => expect(listResult.current.isLoading).toBe(false))
+    const [target] = listResult.current.leads
+
+    stageResult.current.mutate({ id: target.id, stage: 'Won' })
+
+    await waitFor(() => {
+      const updated = listResult.current.leads.find((lead) => lead.id === target.id)
+      expect(updated?.stage).toBe('Won')
+    })
   })
 })

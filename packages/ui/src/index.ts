@@ -21,6 +21,29 @@ export {
   DialogDescription,
 } from './components/ui/dialog'
 export {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuPortal,
+  DropdownMenuGroup,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from './components/ui/dropdown-menu'
+export {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogPortal,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from './components/ui/alert-dialog'
+export {
   Sheet,
   SheetTrigger,
   SheetClose,
@@ -44,6 +67,7 @@ export {
 } from './components/ui/table'
 export { Toaster, toast } from './components/ui/sonner'
 
+export { ConfirmDialog, type ConfirmDialogProps } from './components/confirm-dialog'
 export { EmptyState, type EmptyStateProps } from './components/empty-state'
 export { LoadingState, type LoadingStateProps } from './components/loading-state'
 export { ErrorState, type ErrorStateProps } from './components/error-state'

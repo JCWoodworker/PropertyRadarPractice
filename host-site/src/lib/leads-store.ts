@@ -142,3 +142,9 @@ export async function flagLeadByAddress(address: string, reason: string): Promis
   leads = leads.map((lead) => (lead.address === address ? { ...lead, distressFlag: true, distressReason: reason } : lead))
   return delay([...leads])
 }
+
+/** Updates a single lead's pipeline stage — called from the Stage pill's dropdown in the leads table. */
+export async function updateLeadStage(id: string, stage: LeadStage): Promise<Lead[]> {
+  leads = leads.map((lead) => (lead.id === id ? { ...lead, stage } : lead))
+  return delay([...leads])
+}

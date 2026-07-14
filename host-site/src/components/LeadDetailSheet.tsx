@@ -1,6 +1,17 @@
+import { useState } from 'react'
 import { Trash2, TriangleAlert } from 'lucide-react'
 import type { ThemeOptions } from '@parceliq/embed-sdk'
-import { Badge, Button, Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, StatBadge } from '@parceliq/ui'
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  StatBadge,
+} from '@parceliq/ui'
 
 import { ParcelIQEmbed, type RpcLogEntry } from './ParcelIQEmbed'
 import type { Lead } from '../lib/leads-store'
@@ -15,6 +26,8 @@ export interface LeadDetailSheetProps {
 }
 
 export function LeadDetailSheet({ lead, theme, onOpenChange, onDelete, onFlagged, onLog }: LeadDetailSheetProps) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
   return (
     <Sheet open={Boolean(lead)} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
@@ -41,11 +54,24 @@ export function LeadDetailSheet({ lead, theme, onOpenChange, onDelete, onFlagged
 
               <ParcelIQEmbed key={lead.id} address={lead.address} theme={theme} onFlagged={onFlagged} onLog={onLog} />
 
-              <Button variant="outline" size="sm" className="self-start" onClick={() => onDelete(lead.id)}>
+              <Button variant="outline" size="sm" className="self-start" onClick={() => setConfirmingDelete(true)}>
                 <Trash2 className="size-4" />
                 Delete lead
               </Button>
             </div>
+
+            <ConfirmDialog
+              open={confirmingDelete}
+              onOpenChange={setConfirmingDelete}
+              variant="destructive"
+              title="Delete this lead?"
+              description={`This will permanently remove ${lead.name} (${lead.address}) from RoofingFlow CRM. This can't be undone.`}
+              confirmLabel="Delete lead"
+              onConfirm={() => {
+                setConfirmingDelete(false)
+                onDelete(lead.id)
+              }}
+            />
           </>
         ) : null}
       </SheetContent>

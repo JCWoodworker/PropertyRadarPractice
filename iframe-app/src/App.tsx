@@ -61,12 +61,20 @@ function App() {
   }, [notify])
 
   const isSaved = property ? savedProperties.some((item) => item.address === property.address) : false
-  const isFlagged = property ? flaggedAddresses.has(property.address) : false
+  // Flagged status is tracked by the *originally requested* address
+  // (`currentAddress`), not `property.address` — see handleFlag below for why.
+  const isFlagged = currentAddress ? flaggedAddresses.has(currentAddress) : false
 
   function handleFlag() {
-    if (!property) return
-    notify('propertyFlagged', { address: property.address, reason: DISTRESS_REASON })
-    setFlaggedAddresses((prev) => new Set(prev).add(property.address))
+    if (!property || !currentAddress) return
+    // Report the address the host asked us to look up, not Nominatim's
+    // geocoded/normalized `property.address` — the host's own records are
+    // keyed by the address *it* knows, and those two strings essentially
+    // never match exactly (Nominatim reformats/expands addresses). Sending
+    // back `property.address` here would make `propertyFlagged` silently
+    // match nothing on the host side.
+    notify('propertyFlagged', { address: currentAddress, reason: DISTRESS_REASON })
+    setFlaggedAddresses((prev) => new Set(prev).add(currentAddress))
   }
 
   return (
