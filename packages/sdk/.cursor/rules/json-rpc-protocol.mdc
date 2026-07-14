@@ -1,0 +1,70 @@
+---
+description: JSON-RPC 2.0 contract rules for the host <-> widget bridge (packages/sdk, host-site, iframe-app)
+globs: packages/sdk/**,host-site/src/components/ParcelIQEmbed.tsx,iframe-app/src/lib/rpc-bridge.ts,iframe-app/src/hooks/use-rpc-bridge.ts
+alwaysApply: true
+---
+
+# JSON-RPC Protocol Rules
+
+This bridge is the entire product. Every message crossing it MUST be a
+`{"jsonrpc":"2.0", ...}` envelope, and every rule below exists to keep the
+host and widget from ever trusting a message they shouldn't.
+
+## The contract lives in `packages/sdk/src/types.ts` — nowhere else
+
+1. Adding a new host -> widget call means adding an entry to `RpcMethodMap`
+   FIRST (with `params` and `result` types), before writing any handler.
+2. Adding a new widget -> host event means adding an entry to `RpcEventMap`
+   FIRST. Events are notifications: no `id`, no response, ever.
+3. Never construct an ad-hoc `{method, params}` object inline anywhere else.
+   If it's not in one of these two maps, it doesn't exist.
+4. Name notifications as completed actions (`propertyFlagged`, `ready`,
+   `propertyLoaded`) — never as imperative commands (`flagProperty`). Requests
+   are named as commands (`loadProperty`, `setTheme`).
+
+## Requests vs. notifications, precisely
+
+- A **request** has both `method` and `id`. The receiver MUST eventually post
+  back a response with that same `id` (either `result` or `error`, never both).
+- A **notification** has `method` but no `id`. The receiver MUST NOT respond.
+- Use `isJsonRpcRequest` / `isJsonRpcResponse` / `isJsonRpcNotification` from
+  `types.ts` to narrow incoming `unknown` data — never duck-type by hand.
+
+## Origin validation is not optional
+
+Every `message` event handler, on both sides of the bridge, MUST validate
+`event.origin` (and ideally `event.source`) against the expected counterpart
+origin *before* looking at `event.data`. On the host this is
+`ParcelIQWidget`'s `allowedOrigin` (derived from the widget's `src`). On the
+widget this is `getExpectedParentOrigin()` (read from the `parentOrigin`
+query param the SDK appends when it builds the iframe `src`). There is no
+exception to this rule, including for "internal" or "trusted" messages.
+
+## Worked example: adding a new event
+
+Say you want the widget to notify the host when a user dismisses the
+property card. Do this, in order:
+
+```ts
+// 1. packages/sdk/src/types.ts — add to RpcEventMap FIRST
+export interface RpcEventMap {
+  // ...existing events...
+  propertyDismissed: { address: string }
+}
+```
+
+```ts
+// 2. iframe-app — fire it through the existing `notify` from useRpcBridge
+notify('propertyDismissed', { address: property.address })
+```
+
+```ts
+// 3. host-site — subscribe through the existing ParcelIQWidget instance
+widget.on('propertyDismissed', ({ address }) => { /* ... */ })
+```
+
+No new transport code, no new origin-check code, no new envelope shape —
+the type system and the existing bridge do the rest. If you find yourself
+writing `postMessage` directly anywhere outside `packages/sdk` or
+`iframe-app/src/lib/rpc-bridge.ts`, stop: that's a sign the contract is being
+bypassed.

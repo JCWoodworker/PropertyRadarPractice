@@ -1,0 +1,18 @@
+---
+description: Vitest + React Testing Library conventions for iframe-app
+globs: src/**/*.test.ts,src/**/*.test.tsx
+alwaysApply: false
+---
+
+# Testing Conventions — iframe-app
+
+- Vitest + React Testing Library. No Jest.
+- Mock Nominatim with `msw`, not by stubbing `fetch` directly.
+- The RPC bridge's pure logic (`dispatchRpcRequest`, `isTrustedParentMessage`,
+  origin checks) lives in `src/lib/rpc-bridge.ts` specifically so it can be
+  unit tested with plain mock objects, with no React and no real
+  `postMessage` involved — keep it that way; don't move dispatch logic into
+  the `useRpcBridge` hook itself.
+- One behavior per `it(...)` block.
+- Hooks are tested with `renderHook`, wrapped in a `QueryClientProvider`
+  test helper — see `src/test/` for the shared wrapper.

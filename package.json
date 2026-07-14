@@ -1,0 +1,25 @@
+{
+  "name": "parceliq-poc",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "host-site",
+    "iframe-app",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n host,widget -c blue,magenta \"yarn workspace host-site dev\" \"yarn workspace iframe-app dev\"",
+    "dev:host": "yarn workspace host-site dev",
+    "dev:widget": "yarn workspace iframe-app dev",
+    "build": "yarn workspaces run build",
+    "lint": "yarn workspaces run lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "vitest": "^3.0.5",
+    "@vitest/coverage-v8": "^3.0.5"
+  }
+}

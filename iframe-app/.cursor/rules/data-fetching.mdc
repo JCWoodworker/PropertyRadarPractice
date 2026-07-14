@@ -1,0 +1,25 @@
+---
+description: TanStack Query hook conventions for iframe-app
+globs: src/hooks/**/*.ts
+alwaysApply: false
+---
+
+# Data-Fetching Hook Pattern — iframe-app
+
+Every resource gets exactly one "read" hook that folds all of TanStack
+Query's states into one flat, predictable shape:
+
+```ts
+{ data, isLoading, isEmpty, isError, isOffline, error, refetch }
+```
+
+- `isEmpty` means the query succeeded but found nothing (e.g. Nominatim
+  returned zero results) — distinct from `isError`.
+- `isOffline` means a fetch failed but a previously-cached value for this
+  exact query key still exists (`query.isError && query.data !== undefined`)
+  — render that cached data with an `OfflineBanner`, not a bare error.
+- Mutations (`useSaveProperty`, `useRemoveSavedProperty`) call
+  `queryClient.invalidateQueries` on the relevant key in `onSuccess`.
+- Anything that hits the network (Nominatim, localStorage-backed stores)
+  lives in `src/lib/`, imported by the hook — hooks don't inline `fetch`
+  calls themselves.

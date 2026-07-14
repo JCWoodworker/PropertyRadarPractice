@@ -1,0 +1,16 @@
+---
+description: Pointer to the JSON-RPC contract rules — read before touching ParcelIQEmbed or anything that talks to the widget
+globs: src/components/ParcelIQEmbed.tsx,src/components/RpcEventLog.tsx
+alwaysApply: false
+---
+
+# JSON-RPC Bridge — See packages/sdk
+
+The full protocol rules (envelope shape, origin validation, how to add a new
+method/event) live in `packages/sdk/.cursor/rules/json-rpc-protocol.mdc` —
+read that file before changing anything in `ParcelIQEmbed.tsx`.
+
+The one host-specific rule: `ParcelIQEmbed` is the *only* place in this app
+allowed to construct a `ParcelIQWidget` or touch its `onMessage` hook. Every
+other component should go through the `useLeads`/`useFlagLead` hooks
+instead of reaching into the widget directly.

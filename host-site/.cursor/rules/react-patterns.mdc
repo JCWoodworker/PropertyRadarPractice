@@ -1,0 +1,21 @@
+---
+description: React component conventions for host-site
+alwaysApply: true
+---
+
+# React Patterns — host-site
+
+- Functional components only, one exported component per file.
+- Any data-fetching or mutation logic goes in a hook under `src/hooks/`
+  (see `data-fetching.mdc`) — never call `useQuery`/`useMutation` directly
+  inside a page/component body.
+- Presentational components take data and callbacks as props; they don't
+  reach into hooks themselves unless they *are* the hook's primary consumer
+  (e.g. `LeadsTable` receives `leads` as a prop from `App`, it doesn't call
+  `useLeads()` itself).
+- Prefer composing from `@parceliq/ui` primitives over writing new markup
+  for anything that looks like a button, card, badge, table, dialog, or
+  sheet — check there first.
+- Keep `useEffect` usage minimal and justified with a comment when it's
+  doing something non-obvious (see `ParcelIQEmbed` for the pattern of
+  splitting "mount once" vs. "sync a prop" effects).

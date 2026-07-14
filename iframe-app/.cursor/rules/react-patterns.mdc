@@ -1,0 +1,18 @@
+---
+description: React component conventions for iframe-app
+alwaysApply: true
+---
+
+# React Patterns — iframe-app
+
+- Functional components only, one exported component per file.
+- Any data-fetching or mutation logic goes in a hook under `src/hooks/`
+  (see `data-fetching.mdc`) — components render, hooks fetch.
+- RPC method handlers passed to `useRpcBridge` must stay thin (see
+  `json-rpc-protocol.mdc`).
+- Prefer composing from `@parceliq/ui` primitives over writing new markup.
+- Effects that depend on an object/array prop (like `theme`) must get that
+  value from a memoized source upstream — an inline object literal in a
+  parent's render body will change identity every render and can cause an
+  effect to fire in a loop. (This exact bug happened once with `setTheme` —
+  don't reintroduce it.)

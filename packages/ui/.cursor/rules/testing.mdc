@@ -1,0 +1,15 @@
+---
+description: Vitest + React Testing Library conventions for @parceliq/ui
+globs: src/**/*.test.tsx
+alwaysApply: false
+---
+
+# Testing Conventions — packages/ui
+
+- Test the composed components (`EmptyState`, `LoadingState`, `ErrorState`,
+  `StatBadge`, `OfflineBanner`, `PageHeader`) — these have real conditional
+  rendering logic worth covering.
+- Don't write tests for the raw shadcn/radix primitive wrappers
+  (`button.tsx`, `card.tsx`, ...) beyond a smoke test if any — Radix already
+  owns that behavior's correctness; re-testing it here is low-value.
+- Query by role/label/text, not by class name or `data-testid`.

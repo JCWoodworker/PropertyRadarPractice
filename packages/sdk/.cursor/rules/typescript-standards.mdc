@@ -1,0 +1,19 @@
+---
+description: TypeScript conventions for the SDK package
+globs: packages/sdk/**/*.ts
+alwaysApply: true
+---
+
+# TypeScript Standards — packages/sdk
+
+- `strict: true` always. Never widen a type with `any` to make an error go
+  away — fix the type instead.
+- The RPC method/event maps (`RpcMethodMap`, `RpcEventMap`) are the single
+  source of truth; every other type in this package should be derived from
+  them (`keyof`, indexed access), not duplicated.
+- Prefer discriminated unions over boolean flags for anything with more than
+  two mutually-exclusive states (see `JsonRpcResponse` = success | error).
+- Every exported function that can fail should reject/throw an `Error`
+  instance with a descriptive message, never a bare string or object.
+- No empty `catch` blocks. If you're intentionally swallowing an error, say
+  why in a comment.

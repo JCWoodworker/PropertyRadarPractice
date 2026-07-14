@@ -1,0 +1,20 @@
+---
+description: Vitest + React Testing Library conventions for host-site
+globs: src/**/*.test.ts,src/**/*.test.tsx
+alwaysApply: false
+---
+
+# Testing Conventions — host-site
+
+- Vitest + React Testing Library. No Jest — don't add it, don't add
+  Jest-only APIs or config.
+- Query the DOM by role/label/text (`getByRole`, `getByLabelText`), never by
+  a `data-testid` you had to add just for the test, unless there's genuinely
+  no accessible way to select the element.
+- Mock network calls with `msw` request handlers, not by stubbing `fetch`
+  directly — tests should exercise real request/response parsing.
+- One behavior per `it(...)` block. If a test needs "and also" in its
+  description, split it.
+- Hooks are tested with `renderHook` from `@testing-library/react`, wrapped
+  in a `QueryClientProvider` test helper — see `src/test/` for the shared
+  wrapper.

@@ -1,0 +1,10 @@
+@import "@parceliq/ui/theme.css";
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+/* Tailwind v4's auto content-detection skips node_modules, which is where
+   the @parceliq/ui workspace package resolves from (even though it's just
+   a symlink to ../packages/ui). Without this, none of the utility classes
+   used inside shared components (bg-primary, bg-destructive, ...) would be
+   generated. */
+@source "../../packages/ui/src";

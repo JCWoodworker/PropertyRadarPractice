@@ -1,0 +1,26 @@
+---
+description: TanStack Query hook conventions for host-site
+globs: src/hooks/**/*.ts
+alwaysApply: false
+---
+
+# Data-Fetching Hook Pattern — host-site
+
+Every resource gets exactly one "read" hook that folds all of TanStack
+Query's states into one flat, predictable shape:
+
+```ts
+{ data, isLoading, isEmpty, isError, error, refetch }
+```
+
+- `isEmpty` is a *derived* state (`isSuccess && data.length === 0`), not
+  something TanStack Query gives you — compute it explicitly.
+- `error` is always `Error | null`, never the raw unknown from the query.
+- Mutations are separate hooks (`useAddLead`, `useDeleteLead`, `useFlagLead`),
+  each calling `queryClient.invalidateQueries` on the relevant query key in
+  `onSuccess` — never mutate the cache by hand with `setQueryData` unless
+  you have a specific optimistic-update reason.
+- Query keys are defined once as a `const ... = [...] as const` at the top
+  of the module that owns the resource (see `LEADS_KEY` in `use-leads.ts`)
+  and reused by every hook that touches that resource — never inline a
+  query key string in more than one place.

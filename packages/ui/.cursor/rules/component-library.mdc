@@ -1,0 +1,31 @@
+---
+description: Conventions for the shared @parceliq/ui component library
+globs: packages/ui/src/**
+alwaysApply: true
+---
+
+# @parceliq/ui Component Library Rules
+
+This package is consumed by two independently-deployed apps (`host-site`,
+`iframe-app`). Every change here affects both at once — that's the point of
+having it, but it also means the bar for what belongs here is higher.
+
+- Only put a component here if it is genuinely reused (or clearly about to
+  be) by more than one app. Domain-specific components (e.g. `PropertyCard`,
+  `LeadsTable`) belong in their own app, not here.
+- Never hardcode a color, spacing, or radius value in a component — always
+  go through the tokens in `src/styles/theme.css` (`bg-primary`,
+  `text-muted-foreground`, `rounded-md`, etc.) so theming stays centralized.
+- Every primitive (`button.tsx`, `card.tsx`, ...) should forward `ref` and
+  spread `...props` last, so consumers can always override/extend.
+- Radix primitives keep their accessibility behavior by default — don't
+  strip or override `role`/`aria-*` attributes they set unless you have a
+  specific, documented reason.
+- Export everything through `src/index.ts`. Consumers should never
+  deep-import a file under `src/components/ui/*` directly.
+- Remember: both `host-site` and `iframe-app` scan this package's source for
+  Tailwind class names via an explicit `@source` directive in their own
+  `index.css` (Tailwind v4's auto-detection skips `node_modules`, which is
+  where this workspace package resolves from). If you add a new app that
+  depends on `@parceliq/ui`, it needs that same `@source` line or its
+  utility classes will silently produce no CSS.
